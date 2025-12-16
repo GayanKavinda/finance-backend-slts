@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\RegisterRequest;
 
 class AuthController extends Controller
@@ -21,20 +22,46 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Log the user in immediately (sets session + httpOnly cookie)
+        Auth::login($user);
 
         return response()->json([
-            'message' => 'User registered successfully',
+            'message' => 'User registered and logged in successfully',
             'user' => $user,
-            'token' => $token,
         ], 201);
     }
 
     // Placeholder for login (implement next)
     public function login(Request $request)
     {
-        // TODO: Implement login logic
-        return response()->json(['message' => 'Login endpoint']);
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+
+            return response()->json([
+                'message' => 'Login successful',
+                'user' => Auth::user(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Invalid credentials'
+        ], 401);
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ]);
     }
 
     // Placeholder for forgot password (email reset link)
