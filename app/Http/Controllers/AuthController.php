@@ -1,15 +1,17 @@
 <?php
+// app/Http/Controllers/AuthController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\RegisterRequest;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -53,6 +55,52 @@ class AuthController extends Controller
         ], 401);
     }
 
+    // Placeholder for forgot password (email reset link)
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        return $status == Password::RESET_LINK_SENT
+            ? response()->json([
+                'message' => __($status)
+            ])
+            : response()->json([
+                'message' => __($status)
+            ], 422);
+    }
+
+    // Placeholder for reset password
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->setRememberToken(Str::random(60));
+                $user->save();
+            }
+        );
+
+        return $status == Password::PASSWORD_RESET
+            ? response()->json([
+                'message' => __($status)
+            ])
+            : response()->json([
+                'message' => __($status)
+            ], 422);
+    }
+
     public function logout(Request $request)
     {
         Auth::guard('web')->logout();
@@ -62,18 +110,5 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logged out successfully'
         ]);
-    }
-
-    // Placeholder for forgot password (email reset link)
-    public function forgotPassword(Request $request)
-    {
-        // TODO: Use Password::broker()->sendResetLink()
-        return response()->json(['message' => 'Forgot password endpoint']);
-    }
-
-    // Placeholder for reset password
-    public function resetPassword(Request $request)
-    {
-        // TODO: Implement
     }
 }
