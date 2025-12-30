@@ -152,28 +152,33 @@ class AuthController extends Controller
 
         $user = User::where('email', $email)->first();
 
-        // Security: Don't reveal if user exists or not, but for UX we might want to return success effectively
-        if ($user) {
-            // Generate 6-digit OTP
-            $otp = rand(100000, 999999);
+        if (!$user) {
+            return response()->json([
+                'message' => 'No account found with this email address.',
+                'errors' => ['email' => ['No account found with this email address.']]
+            ], 404);
+        }
 
-            // Debug: Log OTP directly for testing when mail is not set up
-            Log::info("PASSWORD RESET OTP for $email: $otp");
+        // Generate 6-digit OTP
+        $otp = rand(100000, 999999);
 
-            // Store in Cache (email as key) for 15 minutes
-            Cache::put('password_reset_otp:' . $email, $otp, now()->addMinutes(15));
+        // Debug: Log OTP directly for testing when mail is not set up
+        Log::info("PASSWORD RESET OTP for $email: $otp");
 
-            // Send Email
-            try {
-                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordOtp($otp));
-            } catch (\Exception $e) {
-                // Log error but generally return success to user/handle gracefully
-                return response()->json(['message' => 'Could not send email service.'], 500);
-            }
+        // Store in Cache (email as key) for 15 minutes
+        Cache::put('password_reset_otp:' . $email, $otp, now()->addMinutes(15));
+
+        // Send Email
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordOtp($otp));
+        } catch (\Exception $e) {
+            // Log error but generally return success to user/handle gracefully
+            Log::error("Mail Sending Failed: " . $e->getMessage());
+            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
         }
 
         return response()->json([
-            'message' => 'If this email exists, we have sent a 6-digit verification code.'
+            'message' => 'Verification code sent to your email address.'
         ]);
     }
 
