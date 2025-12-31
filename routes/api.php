@@ -34,5 +34,8 @@ Route::middleware(['web'])->group(function () {
         Route::get('/user', function (Request $request) {
             return $request->user();
         });
+
+        Route::post('/update-profile', [AuthController::class, 'updateProfile']);
+        Route::post('/update-password', [AuthController::class, 'updatePassword']);
     });
 });
