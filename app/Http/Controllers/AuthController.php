@@ -223,10 +223,16 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid or expired code.'], 422);
         }
 
+        $email = strtolower(trim($request->email));
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+        if (Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'New password cannot be the same as the old password.',
+                'errors' => [
+                    'password' => ['Please choose a different password that you haven\'t used before.']
+                ]
+            ], 422);
         }
 
         $user->forceFill([
@@ -239,6 +245,110 @@ class AuthController extends Controller
         Cache::forget('password_reset_otp:' . $email);
 
         return response()->json(['message' => 'Password has been reset successfully.']);
+    }
+
+    /**
+     * Default Token-based Reset Password
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
+        ]);
+
+        $email = strtolower(trim($request->email));
+        $user = User::where('email', $email)->first();
+
+        if ($user && Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'New password cannot be the same as the old password.',
+                'errors' => [
+                    'password' => ['Please choose a different password that you haven\'t used before.']
+                ]
+            ], 422);
+        }
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? response()->json(['message' => __($status)])
+            : response()->json([
+                'message' => __($status),
+                'errors' => ['email' => [__($status)]]
+            ], 422);
+    }
+
+    /**
+     * Update User Profile (Name/Email)
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => strtolower(trim($request->email)),
+        ]);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ]);
+    }
+
+    /**
+     * Update Password (Logged-in)
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'current_password' => 'required',
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'The provided password does not match your current password.',
+                'errors' => [
+                    'current_password' => ['Incorrect current password.']
+                ]
+            ], 422);
+        }
+
+        if (Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'New password cannot be the same as your current password.',
+                'errors' => [
+                    'password' => ['Please choose a different password.']
+                ]
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully'
+        ]);
     }
 
     /**

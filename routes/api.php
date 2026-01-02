@@ -29,10 +29,16 @@ Route::middleware(['web'])->group(function () {
     Route::post('/reset-password-otp', [AuthController::class, 'resetPasswordWithOtp'])
         ->middleware('throttle:5,1');
 
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:5,1');
+
     // Protected routes
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/user', function (Request $request) {
             return $request->user();
         });
+
+        Route::post('/update-profile', [AuthController::class, 'updateProfile']);
+        Route::post('/update-password', [AuthController::class, 'updatePassword']);
     });
 });
