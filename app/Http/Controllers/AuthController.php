@@ -152,28 +152,33 @@ class AuthController extends Controller
 
         $user = User::where('email', $email)->first();
 
-        // Security: Don't reveal if user exists or not, but for UX we might want to return success effectively
-        if ($user) {
-            // Generate 6-digit OTP
-            $otp = rand(100000, 999999);
+        if (!$user) {
+            return response()->json([
+                'message' => 'No account found with this email address.',
+                'errors' => ['email' => ['No account found with this email address.']]
+            ], 404);
+        }
 
-            // Debug: Log OTP directly for testing when mail is not set up
-            Log::info("PASSWORD RESET OTP for $email: $otp");
+        // Generate 6-digit OTP
+        $otp = rand(100000, 999999);
 
-            // Store in Cache (email as key) for 15 minutes
-            Cache::put('password_reset_otp:' . $email, $otp, now()->addMinutes(15));
+        // Debug: Log OTP directly for testing when mail is not set up
+        Log::info("PASSWORD RESET OTP for $email: $otp");
 
-            // Send Email
-            try {
-                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordOtp($otp));
-            } catch (\Exception $e) {
-                // Log error but generally return success to user/handle gracefully
-                return response()->json(['message' => 'Could not send email service.'], 500);
-            }
+        // Store in Cache (email as key) for 15 minutes
+        Cache::put('password_reset_otp:' . $email, $otp, now()->addMinutes(15));
+
+        // Send Email
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordOtp($otp));
+        } catch (\Exception $e) {
+            // Log error but generally return success to user/handle gracefully
+            Log::error("Mail Sending Failed: " . $e->getMessage());
+            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
         }
 
         return response()->json([
-            'message' => 'If this email exists, we have sent a 6-digit verification code.'
+            'message' => 'Verification code sent to your email address.'
         ]);
     }
 
@@ -245,110 +250,6 @@ class AuthController extends Controller
         Cache::forget('password_reset_otp:' . $email);
 
         return response()->json(['message' => 'Password has been reset successfully.']);
-    }
-
-    /**
-     * Default Token-based Reset Password
-     */
-    public function resetPassword(Request $request)
-    {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
-        ]);
-
-        $email = strtolower(trim($request->email));
-        $user = User::where('email', $email)->first();
-
-        if ($user && Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'New password cannot be the same as the old password.',
-                'errors' => [
-                    'password' => ['Please choose a different password that you haven\'t used before.']
-                ]
-            ], 422);
-        }
-
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password)
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
-            }
-        );
-
-        return $status === Password::PASSWORD_RESET
-            ? response()->json(['message' => __($status)])
-            : response()->json([
-                'message' => __($status),
-                'errors' => ['email' => [__($status)]]
-            ], 422);
-    }
-
-    /**
-     * Update User Profile (Name/Email)
-     */
-    public function updateProfile(Request $request)
-    {
-        $user = $request->user();
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-        ]);
-
-        $user->update([
-            'name' => $request->name,
-            'email' => strtolower(trim($request->email)),
-        ]);
-
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'user' => $user
-        ]);
-    }
-
-    /**
-     * Update Password (Logged-in)
-     */
-    public function updatePassword(Request $request)
-    {
-        $user = $request->user();
-
-        $request->validate([
-            'current_password' => 'required',
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
-        ]);
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json([
-                'message' => 'The provided password does not match your current password.',
-                'errors' => [
-                    'current_password' => ['Incorrect current password.']
-                ]
-            ], 422);
-        }
-
-        if (Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'New password cannot be the same as your current password.',
-                'errors' => [
-                    'password' => ['Please choose a different password.']
-                ]
-            ], 422);
-        }
-
-        $user->update([
-            'password' => Hash::make($request->password)
-        ]);
-
-        return response()->json([
-            'message' => 'Password updated successfully'
-        ]);
     }
 
     /**
