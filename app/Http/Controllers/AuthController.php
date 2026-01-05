@@ -12,9 +12,16 @@ use Illuminate\Support\Str;
 use App\Http\Requests\RegisterRequest;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
+    private function audit(User $user, Request $request): void
+    {
+        $user->profile_updated_at = now();
+        $user->profile_updated_by = (string) optional($request->user())->id ?: 'system';
+    }
     // Trusted domains - instant validation, no DNS lookup needed
     private const TRUSTED_DOMAINS = [
         'gmail.com',
@@ -252,7 +259,114 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password has been reset successfully.']);
     }
 
-    /**
+    public function updateProfile(Request $request)
+   {
+       $user = $request->user();
+       $data = $request->validate([
+           'name' => 'required|string|min:2|max:255',
+       ]);
+       $user->name = $data['name'];
+       $this->audit($user, $request);
+       $user->save();
+       return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
+   }
+
+   public function updatePassword(Request $request)
+   {
+       $user = $request->user();
+       $data = $request->validate([
+           'current_password' => 'required|string',
+           'password' => ['required','confirmed', PasswordRule::min(8)->letters()->numbers()->mixedCase()],
+       ]);
+       if (!Hash::check($data['current_password'], $user->password)) {
+           return response()->json(['message' => 'Current password is incorrect','errors' => ['current_password' => ['Incorrect current password']]], 422);
+       }
+       if (Hash::check($data['password'], $user->password)) {
+           return response()->json(['message' => 'New password cannot be the same as the old password.','errors' => ['password' => ['Choose a new password different from the current one.']]], 422);
+       }
+       $user->password = Hash::make($data['password']);
+       $this->audit($user, $request);
+       $user->save();
+       return response()->json(['message' => 'Password updated successfully']);
+   }
+
+   public function uploadAvatar(Request $request)
+   {
+       $user = $request->user();
+       $request->validate([
+           'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+       ]);
+       // Delete old avatar if exists
+       if ($user->avatar_path) {
+           try { Storage::disk('public')->delete($user->avatar_path); } catch (\Throwable $e) { /* ignore */ }
+       }
+       $path = $request->file('avatar')->store('avatars', 'public');
+       $user->avatar_path = $path;
+       $this->audit($user, $request);
+       $user->save();
+       return response()->json(['message' => 'Avatar updated successfully', 'avatar_url' => $user->avatar_url]);
+   }
+
+   public function requestEmailChange(Request $request)
+   {
+       $user = $request->user();
+       $data = $request->validate([
+           'new_email' => 'required|email|max:255|unique:users,email',
+           'current_password' => 'required|string',
+       ]);
+       if (!Hash::check($data['current_password'], $user->password)) {
+           return response()->json(['message' => 'Current password is incorrect','errors' => ['current_password' => ['Incorrect current password']]], 422);
+       }
+       $newEmail = strtolower(trim($data['new_email']));
+       $domain = substr(strrchr($newEmail, '@'), 1);
+       if (!$this->isValidEmailDomain($domain)) {
+           return response()->json(['message' => 'Invalid email domain','errors' => ['new_email' => ['This email domain does not have valid mail servers']]], 422);
+       }
+       $otp = rand(100000, 999999);
+       Cache::put('email_change_otp:'.$user->id.':'.$newEmail, $otp, now()->addMinutes(15));
+       try {
+           Mail::raw("Your verification code is: {$otp}", function ($m) use ($newEmail) { $m->to($newEmail)->subject('Verify your new email'); });
+       } catch (\Exception $e) {
+           Log::error('Email change OTP send failed: '.$e->getMessage());
+           return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
+       }
+       return response()->json(['message' => 'Verification code sent to your new email address.']);
+   }
+
+   public function confirmEmailChange(Request $request)
+   {
+       $user = $request->user();
+       $data = $request->validate([
+           'new_email' => 'required|email|max:255|unique:users,email',
+           'otp' => 'required|string|size:6',
+       ]);
+       $newEmail = strtolower(trim($data['new_email']));
+       $cacheKey = 'email_change_otp:'.$user->id.':'.$newEmail;
+       $cachedOtp = Cache::get($cacheKey);
+       if (!$cachedOtp || $cachedOtp != $data['otp']) {
+           return response()->json(['message' => 'Invalid or expired verification code.'], 422);
+       }
+       $user->email = $newEmail;
+       if (in_array('email_verified_at', $user->getFillable()) || \Schema::hasColumn('users','email_verified_at')) {
+           $user->email_verified_at = null;
+       }
+       $this->audit($user, $request);
+       $user->save();
+       Cache::forget($cacheKey);
+       return response()->json(['message' => 'Email updated successfully', 'user' => $user]);
+   }
+
+   public function deactivateAccount(Request $request)
+   {
+       $user = $request->user();
+       $user->delete();
+       Auth::guard('web')->logout();
+       $request->session()->invalidate();
+       $request->session()->regenerateToken();
+       return response()->json(['message' => 'Account deactivated. You can contact support to restore within 30 days.']);
+   }
+
+   /**
      * Logout
      */
     public function logout(Request $request)

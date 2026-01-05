@@ -35,10 +35,25 @@ Route::middleware(['web'])->group(function () {
     // Protected routes
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/user', function (Request $request) {
-            return $request->user();
+            $u = $request->user();
+            if (!$u) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            return response()->json([
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'avatar_url' => ($u->avatar_path ? '/storage/'.$u->avatar_path : null),
+                'profile_updated_at' => $u->profile_updated_at,
+                'profile_updated_by' => $u->profile_updated_by,
+            ]);
         });
 
         Route::post('/update-profile', [AuthController::class, 'updateProfile']);
         Route::post('/update-password', [AuthController::class, 'updatePassword']);
+        Route::post('/upload-avatar', [AuthController::class, 'uploadAvatar']);
+        Route::post('/request-email-change', [AuthController::class, 'requestEmailChange']);
+        Route::post('/confirm-email-change', [AuthController::class, 'confirmEmailChange']);
+        Route::post('/deactivate-account', [AuthController::class, 'deactivateAccount']);
     });
 });
