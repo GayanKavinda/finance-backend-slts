@@ -180,30 +180,45 @@ class AuthController extends Controller
 
     private function logActivity(User $user, Request $request): void
     {
-        $agent = $request->header('User-Agent');
+        $agent = $request->header('User-Agent') ?? '';
 
-        // Simple manual parsing or use a library (kept simple for now)
-        if (str_contains($agent, 'Win')) {
-            $platform = 'Windows';
-        } elseif (str_contains($agent, 'Mac')) {
-            $platform = 'macOS';
+        // Precise Platform Detection
+        $platform = 'Unknown';
+        if (preg_match('/Windows NT ([\d\.]+)/', $agent, $matches)) {
+            $v = $matches[1];
+            $platform = match ($v) {
+                '10.0' => 'Windows 10/11',
+                '6.3' => 'Windows 8.1',
+                '6.2' => 'Windows 8',
+                '6.1' => 'Windows 7',
+                '6.0' => 'Windows Vista',
+                '5.1' => 'Windows XP',
+                default => "Windows NT $v"
+            };
+        } elseif (preg_match('/Mac OS X ([\d_]+)/', $agent, $matches)) {
+            $platform = 'macOS ' . str_replace('_', '.', $matches[1]);
+        } elseif (preg_match('/Android ([\d\.]+)/', $agent, $matches)) {
+            $platform = 'Android ' . $matches[1];
+        } elseif (preg_match('/iPhone OS ([\d_]+)/', $agent, $matches)) {
+            $platform = 'iOS ' . str_replace('_', '.', $matches[1]);
         } elseif (str_contains($agent, 'Linux')) {
             $platform = 'Linux';
-        } elseif (str_contains($agent, 'Android')) {
-            $platform = 'Android';
-        } elseif (str_contains($agent, 'iPhone')) {
-            $platform = 'iOS';
         }
 
+        // Precise Browser Detection (Order Matters!)
         $browser = 'Unknown';
-        if (str_contains($agent, 'Firefox')) {
-            $browser = 'Firefox';
-        } elseif (str_contains($agent, 'Chrome')) {
-            $browser = 'Chrome';
-        } elseif (str_contains($agent, 'Safari')) {
-            $browser = 'Safari';
-        } elseif (str_contains($agent, 'Edge')) {
-            $browser = 'Edge';
+        if (preg_match('/(Edg|Edge)\/([\d\.]+)/', $agent, $matches)) {
+            $browser = 'Edge ' . $matches[2];
+        } elseif (preg_match('/OPR\/([\d\.]+)/', $agent, $matches)) {
+            $browser = 'Opera ' . $matches[1];
+        } elseif (preg_match('/Vivaldi\/([\d\.]+)/', $agent, $matches)) {
+            $browser = 'Vivaldi ' . $matches[1];
+        } elseif (preg_match('/Chrome\/([\d\.]+)/', $agent, $matches)) {
+            $browser = 'Chrome ' . (explode('.', $matches[1])[0] ?? $matches[1]);
+        } elseif (preg_match('/Firefox\/([\d\.]+)/', $agent, $matches)) {
+            $browser = 'Firefox ' . (explode('.', $matches[1])[0] ?? $matches[1]);
+        } elseif (preg_match('/Version\/([\d\.]+).*Safari/', $agent, $matches)) {
+            $browser = 'Safari ' . $matches[1];
         }
 
         $device = str_contains($agent, 'Mobi') ? 'Mobile' : 'Desktop';
