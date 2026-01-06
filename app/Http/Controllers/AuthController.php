@@ -14,9 +14,16 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Models\LoginActivity;
 
 class AuthController extends Controller
 {
+    private const MAX_ATTEMPTS = 5;
+    private const LOCKOUT_MINUTES = 15;
+
     private function audit(User $user, Request $request): void
     {
         $user->profile_updated_at = now();
@@ -129,21 +136,124 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Normalize email
-        $credentials['email'] = strtolower(trim($credentials['email']));
+        $email = strtolower(trim($credentials['email']));
+        $user = User::where('email', $email)->first();
 
-        if (Auth::attempt($credentials)) {
+        if ($user && $user->lockout_until && $user->lockout_until->isFuture()) {
+            $diff = $user->lockout_until->diffInMinutes(now());
+            return response()->json([
+                'message' => "Account locked. Try again in $diff minutes."
+            ], 423);
+        }
+
+        if (Auth::attempt(['email' => $email, 'password' => $credentials['password']])) {
             $request->session()->regenerate();
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            $user->update([
+                'login_attempts' => 0,
+                'lockout_until' => null,
+            ]);
+
+            $this->logActivity($user, $request);
 
             return response()->json([
                 'message' => 'Login successful',
-                'user' => Auth::user(),
+                'user' => $user,
             ]);
+        }
+
+        // Handle failed attempt
+        if ($user) {
+            $user->increment('login_attempts');
+            if ($user->login_attempts >= self::MAX_ATTEMPTS) {
+                $user->update(['lockout_until' => now()->addMinutes(self::LOCKOUT_MINUTES)]);
+            }
         }
 
         return response()->json([
             'message' => 'Invalid credentials'
         ], 401);
+    }
+
+    private function logActivity(User $user, Request $request): void
+    {
+        $agent = $request->header('User-Agent');
+
+        // Simple manual parsing or use a library (kept simple for now)
+        if (str_contains($agent, 'Win')) {
+            $platform = 'Windows';
+        } elseif (str_contains($agent, 'Mac')) {
+            $platform = 'macOS';
+        } elseif (str_contains($agent, 'Linux')) {
+            $platform = 'Linux';
+        } elseif (str_contains($agent, 'Android')) {
+            $platform = 'Android';
+        } elseif (str_contains($agent, 'iPhone')) {
+            $platform = 'iOS';
+        }
+
+        $browser = 'Unknown';
+        if (str_contains($agent, 'Firefox')) {
+            $browser = 'Firefox';
+        } elseif (str_contains($agent, 'Chrome')) {
+            $browser = 'Chrome';
+        } elseif (str_contains($agent, 'Safari')) {
+            $browser = 'Safari';
+        } elseif (str_contains($agent, 'Edge')) {
+            $browser = 'Edge';
+        }
+
+        $device = str_contains($agent, 'Mobi') ? 'Mobile' : 'Desktop';
+
+        LoginActivity::create([
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $agent,
+            'device' => $device,
+            'platform' => $platform,
+            'browser' => $browser,
+            'created_at' => now(),
+        ]);
+    }
+
+    public function getLoginHistory(Request $request)
+    {
+        return response()->json(
+            $request->user()->loginActivities()->orderBy('created_at', 'desc')->limit(20)->get()
+        );
+    }
+
+    public function getActiveSessions(Request $request)
+    {
+        $sessions = DB::table('sessions')
+            ->where('user_id', $request->user()->id)
+            ->get(['id', 'ip_address', 'user_agent', 'last_activity']);
+
+        // Format for frontend
+        $formatted = $sessions->map(function ($session) use ($request) {
+            return [
+                'id' => $session->id,
+                'is_current' => $session->id === $request->session()->getId(),
+                'ip_address' => $session->ip_address,
+                'user_agent' => $session->user_agent,
+                'last_active' => date('Y-m-d H:i:s', $session->last_activity),
+            ];
+        });
+
+        return response()->json($formatted);
+    }
+
+    public function revokeSession(Request $request, $sessionId)
+    {
+        DB::table('sessions')
+            ->where('user_id', $request->user()->id)
+            ->where('id', $sessionId)
+            ->delete();
+
+        return response()->json(['message' => 'Session revoked']);
     }
 
     /**
@@ -260,113 +370,120 @@ class AuthController extends Controller
     }
 
     public function updateProfile(Request $request)
-   {
-       $user = $request->user();
-       $data = $request->validate([
-           'name' => 'required|string|min:2|max:255',
-       ]);
-       $user->name = $data['name'];
-       $this->audit($user, $request);
-       $user->save();
-       return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
-   }
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'name' => 'required|string|min:2|max:255',
+        ]);
+        $user->name = $data['name'];
+        $this->audit($user, $request);
+        $user->save();
+        return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
+    }
 
-   public function updatePassword(Request $request)
-   {
-       $user = $request->user();
-       $data = $request->validate([
-           'current_password' => 'required|string',
-           'password' => ['required','confirmed', PasswordRule::min(8)->letters()->numbers()->mixedCase()],
-       ]);
-       if (!Hash::check($data['current_password'], $user->password)) {
-           return response()->json(['message' => 'Current password is incorrect','errors' => ['current_password' => ['Incorrect current password']]], 422);
-       }
-       if (Hash::check($data['password'], $user->password)) {
-           return response()->json(['message' => 'New password cannot be the same as the old password.','errors' => ['password' => ['Choose a new password different from the current one.']]], 422);
-       }
-       $user->password = Hash::make($data['password']);
-       $this->audit($user, $request);
-       $user->save();
-       return response()->json(['message' => 'Password updated successfully']);
-   }
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'current_password' => 'required|string',
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->mixedCase()],
+        ]);
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect', 'errors' => ['current_password' => ['Incorrect current password']]], 422);
+        }
+        if (Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => 'New password cannot be the same as the old password.', 'errors' => ['password' => ['Choose a new password different from the current one.']]], 422);
+        }
+        $user->password = Hash::make($data['password']);
+        $this->audit($user, $request);
+        $user->save();
+        return response()->json(['message' => 'Password updated successfully']);
+    }
 
-   public function uploadAvatar(Request $request)
-   {
-       $user = $request->user();
-       $request->validate([
-           'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
-       ]);
-       // Delete old avatar if exists
-       if ($user->avatar_path) {
-           try { Storage::disk('public')->delete($user->avatar_path); } catch (\Throwable $e) { /* ignore */ }
-       }
-       $path = $request->file('avatar')->store('avatars', 'public');
-       $user->avatar_path = $path;
-       $this->audit($user, $request);
-       $user->save();
-       return response()->json(['message' => 'Avatar updated successfully', 'avatar_url' => $user->avatar_url]);
-   }
+    public function uploadAvatar(Request $request)
+    {
+        $user = $request->user();
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+        // Delete old avatar if exists
+        if ($user->avatar_path) {
+            try {
+                Storage::disk('public')->delete($user->avatar_path);
+            } catch (\Throwable $e) { /* ignore */
+            }
+        }
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->avatar_path = $path;
+        $this->audit($user, $request);
+        $user->save();
+        return response()->json(['message' => 'Avatar updated successfully', 'avatar_url' => $user->avatar_url]);
+    }
 
-   public function requestEmailChange(Request $request)
-   {
-       $user = $request->user();
-       $data = $request->validate([
-           'new_email' => 'required|email|max:255|unique:users,email',
-           'current_password' => 'required|string',
-       ]);
-       if (!Hash::check($data['current_password'], $user->password)) {
-           return response()->json(['message' => 'Current password is incorrect','errors' => ['current_password' => ['Incorrect current password']]], 422);
-       }
-       $newEmail = strtolower(trim($data['new_email']));
-       $domain = substr(strrchr($newEmail, '@'), 1);
-       if (!$this->isValidEmailDomain($domain)) {
-           return response()->json(['message' => 'Invalid email domain','errors' => ['new_email' => ['This email domain does not have valid mail servers']]], 422);
-       }
-       $otp = rand(100000, 999999);
-       Cache::put('email_change_otp:'.$user->id.':'.$newEmail, $otp, now()->addMinutes(15));
-       try {
-           Mail::raw("Your verification code is: {$otp}", function ($m) use ($newEmail) { $m->to($newEmail)->subject('Verify your new email'); });
-       } catch (\Exception $e) {
-           Log::error('Email change OTP send failed: '.$e->getMessage());
-           return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
-       }
-       return response()->json(['message' => 'Verification code sent to your new email address.']);
-   }
+    public function requestEmailChange(Request $request)
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'new_email' => 'required|email|max:255|unique:users,email',
+            'current_password' => 'required|string',
+        ]);
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect', 'errors' => ['current_password' => ['Incorrect current password']]], 422);
+        }
+        $newEmail = strtolower(trim($data['new_email']));
+        $domain = substr(strrchr($newEmail, '@'), 1);
+        if (!$this->isValidEmailDomain($domain)) {
+            return response()->json(['message' => 'Invalid email domain', 'errors' => ['new_email' => ['This email domain does not have valid mail servers']]], 422);
+        }
+        $otp = rand(100000, 999999);
+        Cache::put('email_change_otp:' . $user->id . ':' . $newEmail, $otp, now()->addMinutes(15));
+        try {
+            Mail::raw("Your verification code is: {$otp}", function ($m) use ($newEmail) {
+                $m->to($newEmail)->subject('Verify your new email');
+            });
+        } catch (\Exception $e) {
+            Log::error('Email change OTP send failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
+        }
+        return response()->json(['message' => 'Verification code sent to your new email address.']);
+    }
 
-   public function confirmEmailChange(Request $request)
-   {
-       $user = $request->user();
-       $data = $request->validate([
-           'new_email' => 'required|email|max:255|unique:users,email',
-           'otp' => 'required|string|size:6',
-       ]);
-       $newEmail = strtolower(trim($data['new_email']));
-       $cacheKey = 'email_change_otp:'.$user->id.':'.$newEmail;
-       $cachedOtp = Cache::get($cacheKey);
-       if (!$cachedOtp || $cachedOtp != $data['otp']) {
-           return response()->json(['message' => 'Invalid or expired verification code.'], 422);
-       }
-       $user->email = $newEmail;
-       if (in_array('email_verified_at', $user->getFillable()) || \Schema::hasColumn('users','email_verified_at')) {
-           $user->email_verified_at = null;
-       }
-       $this->audit($user, $request);
-       $user->save();
-       Cache::forget($cacheKey);
-       return response()->json(['message' => 'Email updated successfully', 'user' => $user]);
-   }
+    public function confirmEmailChange(Request $request)
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'new_email' => 'required|email|max:255|unique:users,email',
+            'otp' => 'required|string|size:6',
+        ]);
+        $newEmail = strtolower(trim($data['new_email']));
+        $cacheKey = 'email_change_otp:' . $user->id . ':' . $newEmail;
+        $cachedOtp = Cache::get($cacheKey);
+        if (!$cachedOtp || $cachedOtp != $data['otp']) {
+            return response()->json(['message' => 'Invalid or expired verification code.'], 422);
+        }
+        if (
+            in_array('email_verified_at', $user->getFillable()) ||
+            Schema::hasColumn('users', 'email_verified_at')
+        ) {
+            $user->email_verified_at = null;
+        }
+        $this->audit($user, $request);
+        $user->save();
+        Cache::forget($cacheKey);
+        return response()->json(['message' => 'Email updated successfully', 'user' => $user]);
+    }
 
-   public function deactivateAccount(Request $request)
-   {
-       $user = $request->user();
-       $user->delete();
-       Auth::guard('web')->logout();
-       $request->session()->invalidate();
-       $request->session()->regenerateToken();
-       return response()->json(['message' => 'Account deactivated. You can contact support to restore within 30 days.']);
-   }
+    public function deactivateAccount(Request $request)
+    {
+        $user = $request->user();
+        $user->delete();
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return response()->json(['message' => 'Account deactivated. You can contact support to restore within 30 days.']);
+    }
 
-   /**
+    /**
      * Logout
      */
     public function logout(Request $request)

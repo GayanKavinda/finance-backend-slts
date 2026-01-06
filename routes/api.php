@@ -43,7 +43,7 @@ Route::middleware(['web'])->group(function () {
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'avatar_url' => ($u->avatar_path ? '/storage/'.$u->avatar_path : null),
+                'avatar_url' => ($u->avatar_path ? '/storage/' . $u->avatar_path : null),
                 'profile_updated_at' => $u->profile_updated_at,
                 'profile_updated_by' => $u->profile_updated_by,
             ]);
@@ -55,5 +55,10 @@ Route::middleware(['web'])->group(function () {
         Route::post('/request-email-change', [AuthController::class, 'requestEmailChange']);
         Route::post('/confirm-email-change', [AuthController::class, 'confirmEmailChange']);
         Route::post('/deactivate-account', [AuthController::class, 'deactivateAccount']);
+
+        // Security Features
+        Route::get('/login-history', [AuthController::class, 'getLoginHistory']);
+        Route::get('/active-sessions', [AuthController::class, 'getActiveSessions']);
+        Route::delete('/revoke-session/{sessionId}', [AuthController::class, 'revokeSession']);
     });
 });

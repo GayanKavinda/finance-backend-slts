@@ -29,6 +29,8 @@ class User extends Authenticatable
         'avatar_path',
         'profile_updated_at',
         'profile_updated_by',
+        'login_attempts',
+        'lockout_until',
     ];
 
     /**
@@ -52,6 +54,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'profile_updated_at' => 'datetime',
+            'lockout_until' => 'datetime',
         ];
     }
 
@@ -68,5 +71,10 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function loginActivities()
+    {
+        return $this->hasMany(LoginActivity::class);
     }
 }
