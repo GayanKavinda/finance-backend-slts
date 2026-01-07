@@ -16,12 +16,22 @@ class LoginActivity extends Model
         'device',
         'platform',
         'browser',
+        'status',
         'created_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
     ];
+
+    /**
+     * Prepare a date for array / JSON serialization.
+     * Ensure UTC dates are returned with the Z suffix.
+     */
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d\TH:i:s.v\Z');
+    }
 
     public function user(): BelongsTo
     {

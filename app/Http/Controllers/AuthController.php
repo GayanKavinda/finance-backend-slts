@@ -157,7 +157,7 @@ class AuthController extends Controller
                 'lockout_until' => null,
             ]);
 
-            $this->logActivity($user, $request);
+            $this->logActivity($user, $request, 'success');
 
             return response()->json([
                 'message' => 'Login successful',
@@ -171,6 +171,7 @@ class AuthController extends Controller
             if ($user->login_attempts >= self::MAX_ATTEMPTS) {
                 $user->update(['lockout_until' => now()->addMinutes(self::LOCKOUT_MINUTES)]);
             }
+            $this->logActivity($user, $request, 'failed');
         }
 
         return response()->json([
@@ -178,7 +179,7 @@ class AuthController extends Controller
         ], 401);
     }
 
-    private function logActivity(User $user, Request $request): void
+    private function logActivity(User $user, Request $request, string $status = 'success'): void
     {
         $agent = $request->header('User-Agent') ?? '';
 
@@ -230,6 +231,7 @@ class AuthController extends Controller
             'device' => $device,
             'platform' => $platform,
             'browser' => $browser,
+            'status' => $status,
             'created_at' => now(),
         ]);
     }
@@ -237,8 +239,14 @@ class AuthController extends Controller
     public function getLoginHistory(Request $request)
     {
         return response()->json(
-            $request->user()->loginActivities()->orderBy('created_at', 'desc')->limit(20)->get()
+            $request->user()->loginActivities()->orderBy('created_at', 'desc')->paginate(5)
         );
+    }
+
+    public function deleteLoginActivity(Request $request, $id)
+    {
+        $request->user()->loginActivities()->where('id', $id)->delete();
+        return response()->json(['message' => 'Login activity removed']);
     }
 
     public function getActiveSessions(Request $request)
@@ -254,7 +262,7 @@ class AuthController extends Controller
                 'is_current' => $session->id === $request->session()->getId(),
                 'ip_address' => $session->ip_address,
                 'user_agent' => $session->user_agent,
-                'last_active' => date('Y-m-d H:i:s', $session->last_activity),
+                'last_active' => Carbon::createFromTimestamp($session->last_activity)->toIso8601String(),
             ];
         });
 

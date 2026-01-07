@@ -58,6 +58,14 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Prepare a date for array / JSON serialization.
+     */
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d\TH:i:s.v\Z');
+    }
+
     protected $appends = ['avatar_url'];
 
     public function getAvatarUrlAttribute(): ?string
