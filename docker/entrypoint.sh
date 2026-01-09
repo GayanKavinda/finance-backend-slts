@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Exit on error
+set -e
+
+echo "Starting Backend Tasks..."
+
+# Clear and Cache configuration
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Run migrations
+echo "Running Migrations..."
+php artisan migrate --force
+
+# Start PHP-FPM in background
+php-fpm -D
+
+# Start Nginx in foreground
+echo "Starting Nginx..."
+nginx -g "daemon off;"
