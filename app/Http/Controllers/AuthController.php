@@ -7,16 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Validation\Rules\Password as PasswordRule;
-use Illuminate\Support\Str;
 use App\Http\Requests\RegisterRequest;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use App\Models\LoginActivity;
 
 class AuthController extends Controller
@@ -24,11 +16,6 @@ class AuthController extends Controller
     private const MAX_ATTEMPTS = 5;
     private const LOCKOUT_MINUTES = 15;
 
-    private function audit(User $user, Request $request): void
-    {
-        $user->profile_updated_at = now();
-        $user->profile_updated_by = (string) optional($request->user())->id ?: 'system';
-    }
     // Trusted domains - instant validation, no DNS lookup needed
     private const TRUSTED_DOMAINS = [
         'gmail.com',
@@ -165,9 +152,13 @@ class AuthController extends Controller
 
             $this->logActivity($user, $request, 'success');
 
+            $user->tokens()->delete();
+            $token = $user->createToken('api-token')->plainTextToken;
+
             return response()->json([
                 'message' => 'Login successful',
                 'user' => $user,
+                'token' => $token,
             ]);
         }
 
@@ -244,311 +235,6 @@ class AuthController extends Controller
             'status' => $status,
             'created_at' => now(),
         ]);
-    }
-
-    public function getLoginHistory(Request $request)
-    {
-        return response()->json(
-            $request->user()->loginActivities()->orderBy('created_at', 'desc')->paginate(5)
-        );
-    }
-
-    public function deleteLoginActivity(Request $request, $id)
-    {
-        $request->user()->loginActivities()->where('id', $id)->delete();
-        return response()->json(['message' => 'Login activity removed']);
-    }
-
-    public function getActiveSessions(Request $request)
-    {
-        $sessions = DB::table('sessions')
-            ->where('user_id', $request->user()->id)
-            ->get(['id', 'ip_address', 'user_agent', 'last_activity']);
-
-        // Format for frontend
-        $formatted = $sessions->map(function ($session) use ($request) {
-            return [
-                'id' => $session->id,
-                'is_current' => $session->id === $request->session()->getId(),
-                'ip_address' => $session->ip_address,
-                'user_agent' => $session->user_agent,
-                'last_active' => Carbon::createFromTimestamp($session->last_activity)->toIso8601String(),
-            ];
-        });
-
-        return response()->json($formatted);
-    }
-
-    public function revokeSession(Request $request, $sessionId)
-    {
-        DB::table('sessions')
-            ->where('user_id', $request->user()->id)
-            ->where('id', $sessionId)
-            ->delete();
-
-        return response()->json(['message' => 'Session revoked']);
-    }
-
-    /**
-     * Forgot Password
-     */
-    /**
-     * Step 1: Request OTP
-     */
-    public function forgotPassword(Request $request)
-    {
-        Log::info("[AuthController] Password reset requested", ['email' => $request->email]);
-        $request->validate(['email' => 'required|email']);
-        $email = strtolower(trim($request->email));
-
-        $user = User::where('email', $email)->first();
-
-        if (!$user) {
-            Log::warning("[AuthController] Password reset failed: No user found for $email");
-            return response()->json([
-                'message' => 'No account found with this email address.',
-                'errors' => ['email' => ['No account found with this email address.']]
-            ], 404);
-        }
-
-        // Generate 6-digit OTP
-        $otp = rand(100000, 999999);
-
-        // Debug: Log OTP directly for testing when mail is not set up
-        Log::info("PASSWORD RESET OTP for $email: $otp");
-
-        // Store in Cache (email as key) for 15 minutes
-        Cache::put('password_reset_otp:' . $email, $otp, now()->addMinutes(15));
-
-        // Send Email
-        try {
-            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordOtp($otp));
-        } catch (\Exception $e) {
-            // Log error but generally return success to user/handle gracefully
-            Log::error("Mail Sending Failed: " . $e->getMessage());
-            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
-        }
-
-        return response()->json([
-            'message' => 'Verification code sent to your email address.'
-        ]);
-    }
-
-    /**
-     * Step 2: Verify OTP
-     */
-    public function verifyOtp(Request $request)
-    {
-        Log::info("[AuthController] Verifying OTP", ['email' => $request->email]);
-        $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required|string|size:6'
-        ]);
-
-        $email = strtolower(trim($request->email));
-        $cachedOtp = Cache::get('password_reset_otp:' . $email);
-
-        if ($cachedOtp && $cachedOtp == $request->otp) {
-            Log::info("[AuthController] OTP verification successful for $email");
-            return response()->json([
-                'message' => 'OTP Verified',
-                'valid' => true
-            ]);
-        }
-
-        Log::warning("[AuthController] OTP verification failed for $email");
-        return response()->json([
-            'message' => 'Invalid or expired code.',
-            'valid' => false
-        ], 422);
-    }
-
-    /**
-     * Step 3: Reset Password with OTP
-     */
-    public function resetPasswordWithOtp(Request $request)
-    {
-        Log::info("[AuthController] Attempting password reset with OTP", ['email' => $request->email]);
-        $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required|string|size:6',
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->symbols()->mixedCase()],
-        ]);
-
-        $email = strtolower(trim($request->email));
-
-        // Re-verify OTP one last time to prevent bypass
-        $cachedOtp = Cache::get('password_reset_otp:' . $email);
-
-        if (!$cachedOtp || $cachedOtp != $request->otp) {
-            Log::warning("[AuthController] Password reset failed: Invalid or expired OTP for $email");
-            return response()->json(['message' => 'Invalid or expired code.'], 422);
-        }
-
-        $user = User::where('email', $email)->first();
-
-        if (Hash::check($request->password, $user->password)) {
-            Log::warning("[AuthController] Password reset failed: New password same as old for $email");
-            return response()->json([
-                'message' => 'New password cannot be the same as the old password.',
-                'errors' => [
-                    'password' => ['Please choose a different password that you haven\'t used before.']
-                ]
-            ], 422);
-        }
-
-        $user->forceFill([
-            'password' => Hash::make($request->password)
-        ])->setRememberToken(Str::random(60));
-
-        $user->save();
-        Log::info("[AuthController] Password reset successful for $email");
-
-        // Clear OTP
-        Cache::forget('password_reset_otp:' . $email);
-
-        return response()->json(['message' => 'Password has been reset successfully.']);
-    }
-
-    public function updateProfile(Request $request)
-    {
-        $user = $request->user();
-        Log::info("[AuthController] Updating profile for User ID: {$user->id}", ['new_name' => $request->name]);
-        $data = $request->validate([
-            'name' => 'required|string|min:2|max:255',
-        ]);
-        $user->name = $data['name'];
-        $this->audit($user, $request);
-        $user->save();
-        Log::info("[AuthController] Profile updated successfully for User ID: {$user->id}");
-        return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
-    }
-
-    public function updatePassword(Request $request)
-    {
-        $user = $request->user();
-        Log::info("[AuthController] Updating password for User ID: {$user->id}");
-        $data = $request->validate([
-            'current_password' => 'required|string',
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()->mixedCase()],
-        ]);
-        if (!Hash::check($data['current_password'], $user->password)) {
-            Log::warning("[AuthController] Password update failed: Incorrect current password for User ID: {$user->id}");
-            return response()->json(['message' => 'Current password is incorrect', 'errors' => ['current_password' => ['Incorrect current password']]], 422);
-        }
-        if (Hash::check($data['password'], $user->password)) {
-            Log::warning("[AuthController] Password update failed: New password same as old for User ID: {$user->id}");
-            return response()->json(['message' => 'New password cannot be the same as the old password.', 'errors' => ['password' => ['Choose a new password different from the current one.']]], 422);
-        }
-        $user->password = Hash::make($data['password']);
-        $this->audit($user, $request);
-        $user->save();
-        Log::info("[AuthController] Password updated successfully for User ID: {$user->id}");
-        return response()->json(['message' => 'Password updated successfully']);
-    }
-
-    public function uploadAvatar(Request $request)
-    {
-        $user = $request->user();
-        Log::info("[AuthController] Uploading avatar for User ID: {$user->id}");
-        $request->validate([
-            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ]);
-        // Delete old avatar if exists
-        if ($user->avatar_path) {
-            try {
-                Storage::disk('public')->delete($user->avatar_path);
-            } catch (\Throwable $e) { /* ignore */
-            }
-        }
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->avatar_path = $path;
-        $this->audit($user, $request);
-        $user->save();
-        Log::info("[AuthController] Avatar uploaded successfully for User ID: {$user->id}. Path: $path");
-        return response()->json(['message' => 'Avatar updated successfully', 'avatar_url' => $user->avatar_url]);
-    }
-
-    public function requestEmailChange(Request $request)
-    {
-        $user = $request->user();
-        Log::info("[AuthController] Requesting email change for User ID: {$user->id}");
-        $data = $request->validate([
-            'new_email' => 'required|email|max:255|unique:users,email',
-            'current_password' => 'required|string',
-        ]);
-
-        if (!Hash::check($data['current_password'], $user->password)) {
-            Log::warning("[AuthController] Email change failed: Incorrect current password for User ID: {$user->id}");
-            return response()->json(['message' => 'Current password is incorrect', 'errors' => ['current_password' => ['Incorrect current password']]], 422);
-        }
-
-        $newEmail = strtolower(trim($data['new_email']));
-        $domain = substr(strrchr($newEmail, '@'), 1);
-
-        if (!$this->isValidEmailDomain($domain)) {
-            Log::warning("[AuthController] Email change failed: Invalid domain $domain for User ID: {$user->id}");
-            return response()->json(['message' => 'Invalid email domain', 'errors' => ['new_email' => ['This email domain does not have valid mail servers']]], 422);
-        }
-
-        $otp = rand(100000, 999999);
-        Log::info("[AuthController] Email change OTP generated for User ID: {$user->id} -> $newEmail: $otp");
-        Cache::put('email_change_otp:' . $user->id . ':' . $newEmail, $otp, now()->addMinutes(15));
-
-        try {
-            Mail::raw("Your verification code is: {$otp}", function ($m) use ($newEmail) {
-                $m->to($newEmail)->subject('Verify your new email');
-            });
-            Log::info("[AuthController] Email change OTP sent to $newEmail");
-        } catch (\Exception $e) {
-            Log::error("[AuthController] Email change OTP send failed: " . $e->getMessage());
-            return response()->json(['message' => 'Could not send verification email. Please try again later.'], 500);
-        }
-
-        return response()->json(['message' => 'Verification code sent to your new email address.']);
-    }
-
-    public function confirmEmailChange(Request $request)
-    {
-        $user = $request->user();
-        Log::info("[AuthController] Confirming email change for User ID: {$user->id}");
-        $data = $request->validate([
-            'new_email' => 'required|email|max:255|unique:users,email',
-            'otp' => 'required|string|size:6',
-        ]);
-        $newEmail = strtolower(trim($data['new_email']));
-        $cacheKey = 'email_change_otp:' . $user->id . ':' . $newEmail;
-        $cachedOtp = Cache::get($cacheKey);
-
-        if (!$cachedOtp || $cachedOtp != $data['otp']) {
-            Log::warning("[AuthController] Email change confirmation failed: Invalid or expired OTP for User ID: {$user->id}");
-            return response()->json(['message' => 'Invalid or expired verification code.'], 422);
-        }
-
-        $user->email = $newEmail;
-        if (
-            in_array('email_verified_at', $user->getFillable()) ||
-            Schema::hasColumn('users', 'email_verified_at')
-        ) {
-            $user->email_verified_at = null;
-        }
-        $this->audit($user, $request);
-        $user->save();
-        Log::info("[AuthController] Email updated successfully for User ID: {$user->id} to $newEmail");
-        Cache::forget($cacheKey);
-        return response()->json(['message' => 'Email updated successfully', 'user' => $user]);
-    }
-
-    public function deactivateAccount(Request $request)
-    {
-        $user = $request->user();
-        Log::warning("[AuthController] User deactivating account. User ID: {$user->id}, Email: {$user->email}");
-        $user->delete();
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        Log::info("[AuthController] Account deactivated successfully");
-        return response()->json(['message' => 'Account deactivated. You can contact support to restore within 30 days.']);
     }
 
     /**
