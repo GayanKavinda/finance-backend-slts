@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('contractor_bills', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('job_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('job_id')->constrained('project_jobs')->cascadeOnDelete();
             $table->foreignId('contractor_id')->constrained()->cascadeOnDelete();
             $table->string('bill_number')->unique();
             $table->decimal('amount', 15, 2);
