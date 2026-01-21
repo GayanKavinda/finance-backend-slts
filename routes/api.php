@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ContractorBillController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\TaxInvoiceController;
+use App\Http\Controllers\Api\InvoicePdfController;
 
 // ✅ Fast email existence check (higher rate limit - used while typing)
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
@@ -100,7 +101,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid']);
 
     Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
-
     Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
-
+    Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
+    
 });

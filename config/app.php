@@ -67,8 +67,8 @@ return [
     |
     */
 
-    // 'timezone' => 'UTC',
-    'timezone' => 'Asia/Colombo',
+    // 'timezone' => 'Asia/Colombo',
+    'timezone' => 'UTC',
 
     /*
     |--------------------------------------------------------------------------
