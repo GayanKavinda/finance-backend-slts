@@ -1,3 +1,5 @@
+<!-- finance-backend/app/Models/Invoice.php -->
+
 <?php
 
 namespace App\Models;

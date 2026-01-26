@@ -5,19 +5,29 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
-use App\Models\PurchaseOrder;
 
 class InvoiceController extends Controller
 {
-    // Invoices
-    public function index()
+    // Invoice listing with pagination and filters
+    public function index(Request $request)
     {
-        return Invoice::with(['purchaseOrder', 'customer', 'taxInvoice'])
-            ->latest()
-            ->get();
+        $query = Invoice::with(['purchaseOrder', 'customer', 'taxInvoice'])
+            ->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        $invoices = $query->paginate(10);
+
+        return response()->json($invoices);
     }
 
-    //create invoice purchase order
+    // Create invoice
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -39,7 +49,7 @@ class InvoiceController extends Controller
         );
     }
 
-    //Submit invoice to finance
+    // Submit invoice to finance
     public function submitToFinance($id)
     {
         $invoice = Invoice::findOrFail($id);
@@ -50,14 +60,12 @@ class InvoiceController extends Controller
             ], 422);
         }
 
-        $invoice->update([
-            'status' => Invoice::STATUS_SUBMITTED,
-        ]);
+        $invoice->update(['status' => Invoice::STATUS_SUBMITTED]);
 
         return response()->json($invoice);
     }
 
-    //Mark invoice as Paid
+    // Mark invoice as Paid
     public function markPaid($id)
     {
         $invoice = Invoice::findOrFail($id);
@@ -68,9 +76,7 @@ class InvoiceController extends Controller
             ], 422);
         }
 
-        $invoice->update([
-            'status' => Invoice::STATUS_PAID,
-        ]);
+        $invoice->update(['status' => Invoice::STATUS_PAID]);
 
         return response()->json($invoice);
     }

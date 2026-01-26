@@ -1,117 +1,135 @@
-<!-- resources/views/pdf/invoice.blade.php -->
+<!-- finance-backend/resources/views/pdf/invoice.blade.php -->
 
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Invoice {{ $invoice->invoice_number }}</title>
+    <title>Invoice</title>
 
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
-            color: #333;
+            color: #0f172a;
         }
 
-        .box {
-            border: 1px solid #ddd;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .company {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .company small {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .invoice-box {
+            border: 1px solid #e5e7eb;
             padding: 20px;
+            border-radius: 8px;
+        }
+
+        .meta {
+            margin-bottom: 20px;
+        }
+
+        .meta div {
+            margin-bottom: 4px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+        table thead {
+            background: #f1f5f9;
         }
 
-        th {
-            background: #f3f4f6;
+        table th,
+        table td {
+            padding: 10px;
+            border: 1px solid #e5e7eb;
             text-align: left;
         }
 
-        .right {
+        .total {
+            margin-top: 20px;
             text-align: right;
         }
 
-        .status {
-            padding: 6px 10px;
-            background: #e0f2fe;
-            color: #0369a1;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
+        .total strong {
+            font-size: 14px;
         }
 
         .footer {
-            margin-top: 50px;
+            margin-top: 40px;
+            font-size: 10px;
+            color: #64748b;
             text-align: center;
-            font-size: 11px;
-            color: #777;
         }
     </style>
 </head>
 <body>
 
-<table>
-    <tr>
-        <td>
-            <img src="{{ public_path('icons/slt_digital_icon.png') }}" height="45">
-            <p>
-                Sri Lanka Telecom Services<br>
-                Finance Division<br>
-                Colombo, Sri Lanka
-            </p>
-        </td>
-        <td class="right">
-            <h2>INVOICE</h2>
-            <span class="status">{{ $invoice->status }}</span>
-        </td>
-    </tr>
-</table>
+<div class="header">
+    <div>
+        <img src="{{ $company['logo'] }}" height="40" />
+        <div class="company">
+            {{ $company['name'] }}
+            <small>{{ $company['division'] }}</small>
+            <small>{{ $company['address'] }}</small>
+        </div>
+    </div>
 
-<div class="box">
-    <p><strong>Invoice No:</strong> {{ $invoice->invoice_number }}</p>
-    <p><strong>Date:</strong> {{ $invoice->invoice_date->format('Y-m-d') }}</p>
-    <p><strong>Customer:</strong> {{ $invoice->customer->name }}</p>
-    <p><strong>Address:</strong> {{ $invoice->customer->billing_address }}</p>
+    <div>
+        <strong>INVOICE</strong><br>
+        #{{ $invoice->invoice_number }}<br>
+        Date: {{ $invoice->created_at->format('Y-m-d') }}
+    </div>
+</div>
+
+<div class="invoice-box">
+    <div class="meta">
+        <div><strong>Billed To:</strong></div>
+        <div>{{ $invoice->customer->name }}</div>
+        <div>{{ $invoice->customer->email ?? '' }}</div>
+    </div>
 
     <table>
         <thead>
-        <tr>
-            <th>Description</th>
-            <th class="right">Amount (LKR)</th>
-        </tr>
+            <tr>
+                <th>Description</th>
+                <th>PO Number</th>
+                <th>Amount</th>
+            </tr>
         </thead>
         <tbody>
-        <tr>
-            <td>Purchase Order {{ $invoice->purchaseOrder->po_number }}</td>
-            <td class="right">{{ number_format($invoice->invoice_amount, 2) }}</td>
-        </tr>
+            <tr>
+                <td>Project Services</td>
+                <td>{{ $invoice->purchaseOrder->po_number ?? '-' }}</td>
+                <td>LKR {{ number_format($invoice->invoice_amount, 2) }}</td>
+            </tr>
         </tbody>
     </table>
 
-    <table style="margin-top:20px">
-        <tr>
-            <td>Subtotal</td>
-            <td class="right">{{ number_format($invoice->invoice_amount, 2) }}</td>
-        </tr>
-        <tr>
-            <td>Tax ({{ $invoice->taxInvoice->tax_percentage }}%)</td>
-            <td class="right">{{ number_format($invoice->taxInvoice->tax_amount, 2) }}</td>
-        </tr>
-        <tr>
-            <td><strong>Total</strong></td>
-            <td class="right"><strong>{{ number_format($invoice->taxInvoice->total_amount, 2) }}</strong></td>
-        </tr>
-    </table>
+    <div class="total">
+        <p>Subtotal: LKR {{ number_format($invoice->invoice_amount, 2) }}</p>
+        <p>Tax: LKR {{ number_format($invoice->taxInvoice->tax_amount, 2) }}</p>
+        <strong>Total: LKR {{ number_format($invoice->total_amount, 2) }}</strong>
+    </div>
 </div>
 
 <div class="footer">
-    This is a system generated invoice
+    This is a system generated invoice. No signature required.
 </div>
 
 </body>

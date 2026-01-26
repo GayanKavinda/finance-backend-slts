@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\TaxInvoiceController;
 use App\Http\Controllers\Api\InvoicePdfController;
+use App\Http\Controllers\Api\InvoiceSummaryController;
 
 // ✅ Fast email existence check (higher rate limit - used while typing)
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
@@ -38,22 +39,6 @@ Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp'])
 
 Route::post('/reset-password-otp', [PasswordResetController::class, 'resetPasswordWithOtp'])
     ->middleware('throttle:5,1');
-
-// Note: 'reset-password' route was present in original but mapped to AuthController::resetPassword which I don't see in the code I read.
-// I suspect it might have been missing or I missed it. I only saw resetPasswordWithOtp.
-// The code I read for AuthController had: forgotPassword, verifyOtp, resetPasswordWithOtp.
-// It did NOT have 'resetPassword'.
-// I will comment it out or remove it to be safe, or map it to resetPasswordWithOtp if that was the intent.
-// Looking at original file, line 34: Route::post('/reset-password', [AuthController::class, 'resetPassword'])
-// But I did not see `resetPassword` method in the file content provided in Step 82.
-// I only saw `resetPasswordWithOtp` at line 373.
-// So `resetPassword` was likely a broken route or I missed the method.
-// I will check if I missed it.
-// Checking Step 82 output...
-// ...
-// 373: public function resetPasswordWithOtp(Request $request)
-// ...
-// I don't see `resetPassword`. So I will remove that route as it likely didn't exist or was a mistake in the routes file.
 
 // Protected routes
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -104,4 +89,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
     
+    Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
+
 });
