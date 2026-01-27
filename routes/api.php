@@ -83,7 +83,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('invoices', [InvoiceController::class, 'index']);
     Route::post('invoices', [InvoiceController::class, 'store']);
     Route::post('invoices/{id}/submit-finance', [InvoiceController::class, 'submitToFinance']);
-    Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid']);
+    Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment');
 
     Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
     Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);

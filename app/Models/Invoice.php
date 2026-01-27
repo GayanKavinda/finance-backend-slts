@@ -1,5 +1,3 @@
-<!-- finance-backend/app/Models/Invoice.php -->
-
 <?php
 
 namespace App\Models;
@@ -27,6 +25,8 @@ class Invoice extends Model
         'invoice_date' => 'date',
     ];
 
+    protected $appends = ['total_amount'];
+
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class, 'po_id');
@@ -40,5 +40,14 @@ class Invoice extends Model
     public function taxInvoice()
     {
         return $this->hasOne(TaxInvoice::class);
+    }
+
+    public function getTotalAmountAttribute()
+    {
+        if (!$this->taxInvoice) {
+            return $this->invoice_amount;
+        }
+
+        return $this->invoice_amount + $this->taxInvoice->tax_amount;
     }
 }

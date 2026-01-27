@@ -8,11 +8,11 @@ use App\Models\Invoice;
 
 class InvoiceController extends Controller
 {
-    // Invoice listing with pagination and filters
+    // List invoices with filters
     public function index(Request $request)
     {
         $query = Invoice::with(['purchaseOrder', 'customer', 'taxInvoice'])
-            ->latest();
+            ->orderByDesc('created_at');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -22,12 +22,12 @@ class InvoiceController extends Controller
             $query->where('customer_id', $request->customer_id);
         }
 
-        $invoices = $query->paginate(10);
-
-        return response()->json($invoices);
+        return response()->json(
+            $query->paginate(10)
+        );
     }
 
-    // Create invoice
+    // Create invoice (any invoice-authorized user)
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -40,7 +40,7 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::create([
             ...$data,
-            'status' => Invoice::STATUS_SENT,
+            'status' => Invoice::STATUS_DRAFT,
         ]);
 
         return response()->json(
@@ -56,16 +56,18 @@ class InvoiceController extends Controller
 
         if ($invoice->status !== Invoice::STATUS_TAX_GENERATED) {
             return response()->json([
-                'message' => 'Tax invoice must be generated first'
+                'message' => 'Invoice must have tax generated first'
             ], 422);
         }
 
-        $invoice->update(['status' => Invoice::STATUS_SUBMITTED]);
+        $invoice->update([
+            'status' => Invoice::STATUS_SUBMITTED,
+        ]);
 
         return response()->json($invoice);
     }
 
-    // Mark invoice as Paid
+    // Mark invoice as paid (Finance only later via middleware)
     public function markPaid($id)
     {
         $invoice = Invoice::findOrFail($id);
@@ -76,7 +78,9 @@ class InvoiceController extends Controller
             ], 422);
         }
 
-        $invoice->update(['status' => Invoice::STATUS_PAID]);
+        $invoice->update([
+            'status' => Invoice::STATUS_PAID,
+        ]);
 
         return response()->json($invoice);
     }

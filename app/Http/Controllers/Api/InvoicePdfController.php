@@ -20,9 +20,11 @@ class InvoicePdfController extends Controller
         if (!in_array($invoice->status, [
             Invoice::STATUS_TAX_GENERATED,
             Invoice::STATUS_SUBMITTED,
-            Invoice::STATUS_PAID
+            Invoice::STATUS_PAID,
         ])) {
-            return response()->json(['message' => 'Invoice not finalized'], 422);
+            return response()->json([
+                'message' => 'Invoice not finalized'
+            ], 422);
         }
 
         $pdf = Pdf::loadView('pdf.invoice', [
@@ -31,7 +33,8 @@ class InvoicePdfController extends Controller
                 'name' => 'Sri Lanka Telecom Services',
                 'division' => 'Finance Division',
                 'address' => 'Colombo, Sri Lanka',
-                'logo' => public_path('icons/slt_digital_icon.png'),
+                // 'logo' => public_path('icons/slt_digital_icon.png'),
+                'logo' => asset('icons/slt_digital_icon.png'),
             ]
         ])->setPaper('A4');
 

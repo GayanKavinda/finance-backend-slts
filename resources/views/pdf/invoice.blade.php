@@ -123,7 +123,9 @@
 
     <div class="total">
         <p>Subtotal: LKR {{ number_format($invoice->invoice_amount, 2) }}</p>
-        <p>Tax: LKR {{ number_format($invoice->taxInvoice->tax_amount, 2) }}</p>
+        <p>
+            Tax: LKR {{ number_format(optional($invoice->taxInvoice)->tax_amount ?? 0, 2) }}
+        </p>
         <strong>Total: LKR {{ number_format($invoice->total_amount, 2) }}</strong>
     </div>
 </div>
