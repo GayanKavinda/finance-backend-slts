@@ -15,7 +15,16 @@ class InvoiceController extends Controller
             ->orderByDesc('created_at');
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $allowedStatuses = [
+                Invoice::STATUS_DRAFT,
+                Invoice::STATUS_TAX_GENERATED,
+                Invoice::STATUS_SUBMITTED,
+                Invoice::STATUS_PAID,
+            ];
+
+            if (in_array($request->status, $allowedStatuses)) {
+                $query->where('status', $request->status);
+            }
         }
 
         if ($request->filled('customer_id')) {
