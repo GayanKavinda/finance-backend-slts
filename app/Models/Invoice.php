@@ -25,7 +25,7 @@ class Invoice extends Model
         'invoice_date' => 'date',
     ];
 
-    protected $appends = ['total_amount'];
+    // protected $appends = ['total_amount'];
 
     public function purchaseOrder()
     {

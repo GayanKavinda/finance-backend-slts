@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
@@ -92,5 +93,24 @@ class InvoiceController extends Controller
         ]);
 
         return response()->json($invoice);
+    }
+
+    public function monthlyTrend()
+    {
+        $data = Invoice::selectRaw('
+                DATE_FORMAT(invoice_date, "%b") as month,
+                SUM(CASE 
+                    WHEN invoice_amount IS NOT NULL THEN invoice_amount 
+                    ELSE 0 
+                END) as total_amount,
+                SUM(CASE WHEN status = "Paid" THEN COALESCE(invoice_amount, 0) ELSE 0 END) as paid_amount,
+                SUM(CASE WHEN status != "Paid" THEN COALESCE(invoice_amount, 0) ELSE 0 END) as pending_amount
+            ')
+            ->groupByRaw('MONTH(invoice_date), DATE_FORMAT(invoice_date, "%b")')
+            ->orderByRaw('MONTH(invoice_date)')
+            ->toBase()
+            ->get();
+
+        return response()->json($data);
     }
 }

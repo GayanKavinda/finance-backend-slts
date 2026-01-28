@@ -84,11 +84,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('invoices', [InvoiceController::class, 'store']);
     Route::post('invoices/{id}/submit-finance', [InvoiceController::class, 'submitToFinance']);
     Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment');
+    Route::get('/invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend']);
 
     Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
     Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
-    
-    Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
 
+    Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
 });
