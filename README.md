@@ -2,23 +2,26 @@
 
 The **Finance App Backend** is a robust and secure API built with Laravel, designed to power modern financial management applications. It features advanced authentication, security monitoring, and real-time validation.
 
+[Features](#-features) • [Tech Stack](#-tech-stack) • [Getting Started](#-getting-started) • [Folder Structure](#-folder-structure) • [Main Project](../README.md)
+
 ## 🚀 Key Features
 
--   **Advanced Authentication**: Secure login, registration, and logout using Laravel Sanctum.
--   **Email Validation**: Real-time email existence checks and full MX record validation during registration.
--   **Security Suite**:
-    -   OTP-based password reset flow.
-    -   Login history tracking.
-    -   Active session management (view and revoke sessions).
--   **Profile Management**: Avatar uploads, profile updates, and secure email change requests.
--   **Rate Limiting**: Intelligent throttling on sensitive endpoints to prevent brute-force attacks.
+- **Advanced Authentication**: Secure login, registration, and logout using Laravel Sanctum.
+- **Email Validation**: Real-time email existence checks and full MX record validation during registration.
+- **Security Suite**:
+    - OTP-based password reset flow.
+    - Login history tracking.
+    - Active session management (view and revoke sessions).
+- **Profile Management**: Avatar uploads, profile updates, and secure email change requests.
+- **Rate Limiting**: Intelligent throttling on sensitive endpoints to prevent brute-force attacks.
 
 ## 🛠️ Tech Stack
 
--   **Framework**: [Laravel 11](https://laravel.com)
--   **Authentication**: [Laravel Sanctum](https://laravel.com/docs/sanctum)
--   **Database**: MySQL
--   **Server**: PHP 8.2+
+- **Framework**: [Laravel 12](https://laravel.com)
+- **Documentation**: [Back to Main Project](../README.md)
+- **Authentication**: [Laravel Sanctum](https://laravel.com/docs/sanctum)
+- **Database**: MySQL
+- **Server**: PHP 8.2+
 
 ## 📥 Installation
 
