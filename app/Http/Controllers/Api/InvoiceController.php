@@ -113,4 +113,20 @@ class InvoiceController extends Controller
 
         return response()->json($data);
     }
+
+    public function summary()
+    {
+        $data = Invoice::selectRaw('
+        COUNT(*) as total_invoices,
+        SUM(CASE WHEN status = "Paid" THEN 1 ELSE 0 END) as paid_invoices,
+        SUM(CASE WHEN status != "Paid" THEN 1 ELSE 0 END) as pending_invoices,
+        SUM(COALESCE(invoice_amount, 0)) as gross_amount,
+        SUM(CASE WHEN status = "Paid" THEN COALESCE(invoice_amount, 0) ELSE 0 END) as paid_amount,
+        SUM(CASE WHEN status != "Paid" THEN COALESCE(invoice_amount, 0) ELSE 0 END) as pending_amount
+    ')
+            ->toBase()
+            ->first();
+
+        return response()->json($data);
+    }
 }

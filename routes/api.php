@@ -91,4 +91,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
 
     Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
+    Route::get('/invoice-summary', [InvoiceController::class, 'summary']);
 });
