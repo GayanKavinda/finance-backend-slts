@@ -92,4 +92,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
     Route::get('/invoice-summary', [InvoiceController::class, 'summary']);
+    Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
 });
+

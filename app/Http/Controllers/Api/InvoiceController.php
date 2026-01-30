@@ -59,6 +59,32 @@ class InvoiceController extends Controller
         );
     }
 
+    // Update invoice (any invoice-authorized user)
+    public function update(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        if ($invoice->status !== Invoice::STATUS_DRAFT) {
+            return response()->json([
+                'message' => 'Invoice must be in draft status to update'
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'po_id' => 'required|exists:purchase_orders,id',
+            'customer_id' => 'required|exists:customers,id',
+            'invoice_amount' => 'required|numeric|min:0',
+            'invoice_date' => 'required|date',
+        ]);
+
+        $invoice->update($data);
+
+        return response()->json(
+            $invoice->load(['customer', 'purchaseOrder']),
+            200
+        );
+    }
+
     // Submit invoice to finance
     public function submitToFinance($id)
     {
