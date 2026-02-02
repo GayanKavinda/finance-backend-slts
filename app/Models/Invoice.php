@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     const STATUS_DRAFT = 'Draft';
-    const STATUS_SENT = 'Sent';
+    // const STATUS_SENT = 'Sent';
     const STATUS_TAX_GENERATED = 'Tax Generated';
     const STATUS_SUBMITTED = 'Submitted';
     const STATUS_PAID = 'Paid';
