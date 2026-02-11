@@ -42,18 +42,17 @@ Route::post('/reset-password-otp', [PasswordResetController::class, 'resetPasswo
 
 // Protected routes
 Route::middleware(['auth:sanctum'])->group(function () {
+
     Route::get('/user', function (Request $request) {
-        $u = $request->user();
-        if (!$u) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
+        $u = $request->user()->load('roles');
+
         return response()->json([
             'id' => $u->id,
             'name' => $u->name,
             'email' => $u->email,
             'avatar_url' => ($u->avatar_path ? '/storage/' . $u->avatar_path : null),
-            'profile_updated_at' => $u->profile_updated_at,
-            'profile_updated_by' => $u->profile_updated_by,
+            'roles' => $u->roles->pluck('name'),
+            'permissions' => $u->getAllPermissions()->pluck('name'),
         ]);
     });
 
@@ -94,4 +93,3 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/invoice-summary', [InvoiceController::class, 'summary']);
     Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
 });
-
