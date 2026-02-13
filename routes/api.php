@@ -85,6 +85,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('invoices/{id}/submit-to-finance', [InvoiceController::class, 'submitToFinance'])->middleware('can:submit-invoice'); // Alias for frontend consistency
     // Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment');
     Route::post('invoices/{id}/approve', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment'); // Alias for frontend consistency
+    Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown']);
     Route::get('/invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend']);
 
     Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);

@@ -15,6 +15,10 @@ class InvoiceController extends Controller
         $query = Invoice::with(['purchaseOrder', 'customer', 'taxInvoice'])
             ->orderByDesc('created_at');
 
+        if ($request->filled('search')) {
+            $query->where('invoice_number', 'like', '%' . $request->search . '%');
+        }
+
         if ($request->filled('status')) {
             $allowedStatuses = [
                 Invoice::STATUS_DRAFT,
@@ -154,6 +158,13 @@ class InvoiceController extends Controller
     ')
             ->toBase()
             ->first();
+
+        return response()->json($data);
+    }
+
+    public function statusBreakdown()
+    {
+        $data = Invoice::selectRaw('status, COUNT(*) as count')->groupBy('status')->get();
 
         return response()->json($data);
     }
