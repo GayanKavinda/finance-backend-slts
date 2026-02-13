@@ -88,7 +88,6 @@ class InvoiceController extends Controller
     // Submit invoice to finance
     public function submitToFinance($id)
     {
-        $this->authorize('submit-invoice');
 
         $invoice = Invoice::findOrFail($id);
 
@@ -108,7 +107,6 @@ class InvoiceController extends Controller
     // Mark invoice as paid (Finance only later via middleware)
     public function markPaid($id)
     {
-        $this->authorize('approve-payment');
 
         $invoice = Invoice::findOrFail($id);
 
