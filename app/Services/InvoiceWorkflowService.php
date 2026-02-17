@@ -32,6 +32,10 @@ class InvoiceWorkflowService
 
             $this->logStatusChange($invoice, $oldStatus, Invoice::STATUS_SUBMITTED);
 
+            // Notify Finance Users
+            $financeUsers = \App\Models\User::permission('approve-payment')->get();
+            \Illuminate\Support\Facades\Notification::send($financeUsers, new \App\Notifications\InvoiceStatusChanged($invoice, 'submitted', Auth::user()));
+
             return $invoice;
         });
     }
@@ -57,6 +61,11 @@ class InvoiceWorkflowService
             ]);
 
             $this->logStatusChange($invoice, $oldStatus, Invoice::STATUS_APPROVED);
+
+            // Notify Submitter
+            if ($invoice->submitter) {
+                $invoice->submitter->notify(new \App\Notifications\InvoiceStatusChanged($invoice, 'approved', Auth::user()));
+            }
 
             return $invoice;
         });
@@ -92,6 +101,11 @@ class InvoiceWorkflowService
             $invoice->update($updateData);
 
             $this->logStatusChange($invoice, $oldStatus, Invoice::STATUS_REJECTED, $reason);
+
+            // Notify Submitter
+            if ($invoice->submitter) {
+                $invoice->submitter->notify(new \App\Notifications\InvoiceStatusChanged($invoice, 'rejected', Auth::user()));
+            }
 
             return $invoice;
         });
@@ -153,9 +167,7 @@ class InvoiceWorkflowService
         $currentStatus = $invoice->status;
 
         if (!isset($allowed[$currentStatus]) || !in_array($targetStatus, $allowed[$currentStatus])) {
-            throw ValidationException::withMessages([
-                'status' => ["Cannot transition invoice from {$currentStatus} to {$targetStatus}."]
-            ]);
+            abort(422, "Cannot transition invoice from '{$currentStatus}' to '{$targetStatus}'.");
         }
     }
 }

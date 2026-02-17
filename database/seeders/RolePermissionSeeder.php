@@ -28,6 +28,7 @@ class RolePermissionSeeder extends Seeder
             'approve-payment',
             'reject-invoice',      // NEW: Finance can reject
             'view-audit-trail',    // NEW: View status history
+            'manage-users',        // NEW: Admin user management
         ];
 
         foreach ($permissions as $permission) {

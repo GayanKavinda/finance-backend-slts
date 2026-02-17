@@ -48,6 +48,7 @@ class InvoiceController extends Controller
     }
 
     // Create invoice (any invoice-authorized user)
+    // Create invoice (any invoice-authorized user)
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -58,10 +59,26 @@ class InvoiceController extends Controller
             'invoice_date' => 'required|date',
         ]);
 
-        $invoice = Invoice::create([
-            ...$data,
-            'status' => Invoice::STATUS_DRAFT,
-        ]);
+        $invoice = DB::transaction(function () use ($data) {
+            $invoice = Invoice::create([
+                ...$data,
+                'status' => Invoice::STATUS_DRAFT,
+            ]);
+
+            \App\Models\InvoiceStatusHistory::create([
+                'invoice_id' => $invoice->id,
+                'old_status' => null,
+                'new_status' => Invoice::STATUS_DRAFT,
+                'changed_by' => auth()->id(),
+                'metadata' => [
+                    'action' => 'created',
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->header('User-Agent'),
+                ],
+            ]);
+
+            return $invoice;
+        });
 
         return response()->json(
             $invoice->load(['purchaseOrder', 'customer']),
@@ -201,15 +218,18 @@ class InvoiceController extends Controller
     public function summary()
     {
         $paidStatus = Invoice::STATUS_PAID;
+        $submittedStatus = Invoice::STATUS_SUBMITTED;
+        $rejectedStatus = Invoice::STATUS_REJECTED;
 
         $data = Invoice::selectRaw("
-        COUNT(*) as total_invoices,
-        SUM(CASE WHEN status = '$paidStatus' THEN 1 ELSE 0 END) as paid_invoices,
-        SUM(CASE WHEN status != '$paidStatus' THEN 1 ELSE 0 END) as pending_invoices,
-        SUM(COALESCE(invoice_amount, 0)) as gross_amount,
-        SUM(CASE WHEN status = '$paidStatus' THEN COALESCE(invoice_amount, 0) ELSE 0 END) as paid_amount,
-        SUM(CASE WHEN status != '$paidStatus' THEN COALESCE(invoice_amount, 0) ELSE 0 END) as pending_amount
-    ")
+            COUNT(*) as total_invoices,
+            SUM(CASE WHEN status = '$paidStatus' THEN 1 ELSE 0 END) as paid_invoices,
+            SUM(CASE WHEN status = '$submittedStatus' THEN 1 ELSE 0 END) as pending_approval_count,
+            SUM(CASE WHEN status = '$rejectedStatus' THEN 1 ELSE 0 END) as rejected_count,
+            SUM(COALESCE(invoice_amount, 0)) as gross_amount,
+            SUM(CASE WHEN status = '$paidStatus' THEN COALESCE(invoice_amount, 0) ELSE 0 END) as paid_amount,
+            SUM(CASE WHEN status != '$paidStatus' THEN COALESCE(invoice_amount, 0) ELSE 0 END) as pending_amount
+        ")
             ->toBase()
             ->first();
 

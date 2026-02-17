@@ -95,6 +95,50 @@ class InvoiceWorkflowTest extends TestCase
     }
 
     /** @test */
+    public function invoice_creation_logs_audit_entry()
+    {
+        $po = PurchaseOrder::create([
+            'po_number' => 'PO-' . rand(1000, 9999),
+            'po_description' => 'Test PO',
+            'po_amount' => 5000.00,
+            'billing_address' => '123 Fake Street',
+            'tender_id' => \App\Models\Tender::create([
+                'tender_number' => 'T-001-' . rand(100, 999),
+                'customer_id' => Customer::create(['name' => 'Cust', 'billing_address' => 'Addr', 'tax_number' => '123', 'contact_person' => 'Person'])->id,
+                'awarded_amount' => 50000,
+                'start_date' => now(),
+                'end_date' => now()->addMonth(),
+                'status' => \App\Models\Tender::STATUS_AWARDED
+            ])->id,
+            'customer_id' => 1, // Hacky but works if tender created it properly, actually let's use the one from tender
+            'status' => \App\Models\PurchaseOrder::STATUS_APPROVED
+        ]);
+        // Fix up the PO customer_id
+        $po->customer_id = $po->tender->customer_id;
+        $po->save();
+
+        $data = [
+            'po_id' => $po->id,
+            'customer_id' => $po->customer_id,
+            'invoice_number' => 'INV-NEW-' . rand(1000, 9999),
+            'invoice_amount' => 1000.00,
+            'invoice_date' => now()->toDateString(),
+        ];
+
+        $response = $this->actingAs($this->procurement)
+            ->postJson('/api/invoices', $data);
+
+        $response->assertStatus(201);
+        $invoiceId = $response->json('id');
+
+        $this->assertDatabaseHas('invoice_status_history', [
+            'invoice_id' => $invoiceId,
+            'new_status' => Invoice::STATUS_DRAFT,
+            'changed_by' => $this->procurement->id,
+        ]);
+    }
+
+    /** @test */
     public function procurement_can_submit_tax_generated_invoice()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_TAX_GENERATED);

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\TaxInvoiceController;
 use App\Http\Controllers\Api\InvoicePdfController;
 use App\Http\Controllers\Api\InvoiceSummaryController;
+use App\Http\Controllers\Api\NotificationController;
 
 // ✅ Fast email existence check (higher rate limit - used while typing)
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
@@ -129,4 +130,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
     Route::get('/invoice-summary', [InvoiceController::class, 'summary'])
         ->middleware('can:view-invoice');
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+
+    // ── Admin: User Management ────────────────────────────────────
+    Route::prefix('admin')->middleware('can:manage-users')->group(function () {
+        Route::get('/users', [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
+        Route::get('/users/{id}', [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
+        Route::post('/users/{id}/assign-role', [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
+        Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
+        Route::post('/users/{id}/reactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
+        Route::get('/roles', [\App\Http\Controllers\Api\UserManagementController::class, 'roles']);
+    });
 });
