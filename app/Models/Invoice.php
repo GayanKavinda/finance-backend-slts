@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models;
-
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
@@ -12,6 +12,16 @@ class Invoice extends Model
     const STATUS_SUBMITTED = 'Submitted';
     const STATUS_PAID = 'Paid';
 
+    public static function statuses(): array
+    {
+        return [
+            self::STATUS_DRAFT,
+            self::STATUS_TAX_GENERATED,
+            self::STATUS_SUBMITTED,
+            self::STATUS_PAID,
+        ];
+    }
+
     protected $fillable = [
         'po_id',
         'customer_id',
@@ -19,6 +29,11 @@ class Invoice extends Model
         'invoice_amount',
         'invoice_date',
         'status',
+        'payment_reference',
+        'payment_method',
+        'paid_at',
+        'recorded_by',
+        'payment_notes',
     ];
 
     protected $casts = [
@@ -50,4 +65,11 @@ class Invoice extends Model
 
         return $this->invoice_amount + $this->taxInvoice->tax_amount;
     }
+
+    public function recordedBy()
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+
 }

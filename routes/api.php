@@ -56,6 +56,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ]);
     });
 
+    Route::get('/profile', function (Request $request) {
+        $u = $request->user()->load('roles');
+
+        return response()->json([
+            'id' => $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'avatar_url' => ($u->avatar_path ? '/storage/' . $u->avatar_path : null),
+            'roles' => $u->roles->pluck('name'),
+            'permissions' => $u->getAllPermissions()->pluck('name'),
+        ]);
+    });
+
     Route::post('/update-profile', [ProfileController::class, 'updateProfile']);
     Route::post('/update-password', [ProfileController::class, 'updatePassword']);
     Route::post('/upload-avatar', [ProfileController::class, 'uploadAvatar']);

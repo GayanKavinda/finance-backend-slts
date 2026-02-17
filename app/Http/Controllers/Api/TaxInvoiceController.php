@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\TaxInvoice;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\DB;
 
 class TaxInvoiceController extends Controller
 {
@@ -21,9 +22,9 @@ class TaxInvoiceController extends Controller
 
         $invoice = Invoice::findOrFail($data['invoice_id']);
 
-        if ($invoice->status !== Invoice::STATUS_SENT) {
+        if ($invoice->status !== Invoice::STATUS_DRAFT) {
             return response()->json([
-                'message' => 'Invoice must be Sent before generating tax invoice'
+                'message' => 'Invoice must be in Draft before generating tax invoice'
             ], 422);
         }
 
@@ -33,14 +34,18 @@ class TaxInvoiceController extends Controller
             ], 422);
         }
 
-        $taxInvoice = TaxInvoice::create([
-            ...$data,
-            'locked' => true,
-        ]);
+        $taxInvoice = DB::transaction(function () use ($data, $invoice) {
+            $taxInvoice = TaxInvoice::create([
+                ...$data,
+                'locked' => true,
+            ]);
 
-        $invoice->update([
-            'status' => Invoice::STATUS_TAX_GENERATED,
-        ]);
+            $invoice->update([
+                'status' => Invoice::STATUS_TAX_GENERATED,
+            ]);
+
+            return $taxInvoice;
+        });
 
         return response()->json(
             $taxInvoice->load('invoice'),

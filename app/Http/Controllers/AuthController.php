@@ -86,6 +86,11 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Assign role if provided
+        if ($request->role) {
+            $user->assignRole(ucfirst(strtolower($request->role)));
+        }
+
         Auth::login($user);
         Log::info("[AuthController] User registered and logged in: $email (ID: {$user->id})");
 

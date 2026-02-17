@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->decimal('invoice_amount', 15, 2);
             $table->date('invoice_date');
-            $table->enum('status', ['Draft', 'Sent', 'Tax Generated', 'Submitted', 'Paid'])->default('Draft');
+            $table->enum('status', ['Draft', 'Tax Generated', 'Submitted', 'Paid'])->default('Draft');
             $table->timestamps();
         });
     }
