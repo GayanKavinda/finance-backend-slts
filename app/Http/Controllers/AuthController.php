@@ -86,9 +86,11 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Assign role if provided
+        // Assign role if provided, otherwise default to "Viewer"
         if ($request->role) {
             $user->assignRole(ucfirst(strtolower($request->role)));
+        } else {
+            $user->assignRole('Viewer');
         }
 
         Auth::login($user);

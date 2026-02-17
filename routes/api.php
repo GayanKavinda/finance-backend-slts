@@ -15,14 +15,11 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\TaxInvoiceController;
 use App\Http\Controllers\Api\InvoicePdfController;
-use App\Http\Controllers\Api\InvoiceSummaryController;
 use App\Http\Controllers\Api\NotificationController;
 
-// ✅ Fast email existence check (higher rate limit - used while typing)
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
-    ->middleware('throttle:30,1'); // 30 requests per minute
+    ->middleware('throttle:30,1');
 
-// Registration with full MX validation
 Route::post('/register', [AuthController::class, 'register'])
     ->middleware('throttle:10,1');
 
@@ -31,7 +28,6 @@ Route::post('/login', [AuthController::class, 'login'])
 
 Route::post('/logout', [AuthController::class, 'logout']);
 
-// OTP Password Reset Routes
 Route::post('/forgot-password-otp', [PasswordResetController::class, 'forgotPassword'])
     ->middleware('throttle:5,1');
 
@@ -41,57 +37,78 @@ Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp'])
 Route::post('/reset-password-otp', [PasswordResetController::class, 'resetPasswordWithOtp'])
     ->middleware('throttle:5,1');
 
-// Protected routes
 Route::middleware(['auth:sanctum'])->group(function () {
+
+    // ── User & Profile ────────────────────────────────────────────
 
     Route::get('/user', function (Request $request) {
         $u = $request->user()->load('roles');
-
         return response()->json([
-            'id' => $u->id,
-            'name' => $u->name,
-            'email' => $u->email,
-            'avatar_url' => ($u->avatar_path ? '/storage/' . $u->avatar_path : null),
-            'roles' => $u->roles->pluck('name'),
+            'id'          => $u->id,
+            'name'        => $u->name,
+            'email'       => $u->email,
+            'avatar_url'  => $u->avatar_path ? '/storage/' . $u->avatar_path : null,
+            'roles'       => $u->roles->pluck('name'),
             'permissions' => $u->getAllPermissions()->pluck('name'),
         ]);
     });
 
     Route::get('/profile', function (Request $request) {
         $u = $request->user()->load('roles');
-
         return response()->json([
-            'id' => $u->id,
-            'name' => $u->name,
-            'email' => $u->email,
-            'avatar_url' => ($u->avatar_path ? '/storage/' . $u->avatar_path : null),
-            'roles' => $u->roles->pluck('name'),
+            'id'          => $u->id,
+            'name'        => $u->name,
+            'email'       => $u->email,
+            'avatar_url'  => $u->avatar_path ? '/storage/' . $u->avatar_path : null,
+            'roles'       => $u->roles->pluck('name'),
             'permissions' => $u->getAllPermissions()->pluck('name'),
         ]);
     });
 
-    Route::post('/update-profile', [ProfileController::class, 'updateProfile']);
-    Route::post('/update-password', [ProfileController::class, 'updatePassword']);
-    Route::post('/upload-avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::post('/update-profile',       [ProfileController::class, 'updateProfile']);
+    Route::post('/update-password',      [ProfileController::class, 'updatePassword']);
+    Route::post('/upload-avatar',        [ProfileController::class, 'uploadAvatar']);
     Route::post('/request-email-change', [ProfileController::class, 'requestEmailChange']);
     Route::post('/confirm-email-change', [ProfileController::class, 'confirmEmailChange']);
-    Route::post('/deactivate-account', [ProfileController::class, 'deactivateAccount']);
+    Route::post('/deactivate-account',   [ProfileController::class, 'deactivateAccount']);
 
-    // Security Features
-    Route::get('/login-history', [SecurityController::class, 'getLoginHistory']);
-    Route::delete('/login-history/{id}', [SecurityController::class, 'deleteLoginActivity']);
-    Route::get('/active-sessions', [SecurityController::class, 'getActiveSessions']);
+    // ── Security ──────────────────────────────────────────────────
+
+    Route::get('/login-history',                 [SecurityController::class, 'getLoginHistory']);
+    Route::delete('/login-history/{id}',         [SecurityController::class, 'deleteLoginActivity']);
+    Route::get('/active-sessions',               [SecurityController::class, 'getActiveSessions']);
     Route::delete('/revoke-session/{sessionId}', [SecurityController::class, 'revokeSession']);
 
-    Route::apiResource('customers', CustomerController::class);
-    Route::apiResource('contractors', ContractorController::class);
-    Route::apiResource('tenders', TenderController::class);
-    Route::apiResource('jobs', JobController::class);
+    // ── Master Data ───────────────────────────────────────────────
 
-    Route::get('/contractor-bills', [ContractorBillController::class, 'index']);
-    Route::post('/contractor-bills', [ContractorBillController::class, 'store']);
-    Route::post('/contractor-bills/{id}/verify', [ContractorBillController::class, 'verify']);
+    Route::apiResource('customers',   CustomerController::class);
+    Route::apiResource('contractors', ContractorController::class);
+    Route::apiResource('tenders',     TenderController::class);
+    Route::apiResource('jobs',        JobController::class);
+
+    // ── Contractor Bills ──────────────────────────────────────────
+
+    Route::get('/contractor-bills',               [ContractorBillController::class, 'index']);
+    Route::post('/contractor-bills',              [ContractorBillController::class, 'store']);
+    Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify']);
     Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
+
+    // ── Purchase Orders & Tax ─────────────────────────────────────
+
+    Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
+    Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
+
+    // ── Invoices ──────────────────────────────────────────────────
+    // Static paths BEFORE parameterized {id} routes.
+
+    Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown'])
+        ->middleware('can:view-invoice');
+
+    Route::get('invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend'])
+        ->middleware('can:view-invoice');
+
+    Route::get('/invoice-summary', [InvoiceController::class, 'summary'])
+        ->middleware('can:view-invoice');
 
     Route::get('invoices', [InvoiceController::class, 'index'])
         ->middleware('can:view-invoice');
@@ -117,34 +134,36 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('invoices/{id}/audit-trail', [InvoiceController::class, 'getAuditTrail'])
         ->middleware('can:view-audit-trail');
 
-    Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown'])
-        ->middleware('can:view-invoice');
-
-    Route::get('/invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend'])
-        ->middleware('can:view-invoice');
-
-    Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
-    Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
 
-    // Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
-    Route::get('/invoice-summary', [InvoiceController::class, 'summary'])
-        ->middleware('can:view-invoice');
+    // ── Notifications ─────────────────────────────────────────────
+    //
+    // ⚠️  Same ordering rule applies here:
+    //     /notifications/unread   — static, must come FIRST
+    //     /notifications/read-all — static, must come FIRST
+    //     /notifications/{id}/... — parameterized, must come AFTER
+    //
+    // If {id} routes appear first, Laravel matches "unread" and "read-all"
+    // as notification IDs, returning 404 "notification not found".
 
-    // Notifications
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::get('/notifications',             [NotificationController::class, 'index']);
+
+    // Static sub-routes BEFORE {id} sub-routes
+    Route::get('/notifications/unread',      [NotificationController::class, 'unread']);
+    Route::post('/notifications/read-all',   [NotificationController::class, 'markAllAsRead']);
+
+    // Parameterized sub-routes AFTER
+    Route::post('/notifications/{id}/read',  [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}',     [NotificationController::class, 'destroy']);
 
     // ── Admin: User Management ────────────────────────────────────
+
     Route::prefix('admin')->middleware('can:manage-users')->group(function () {
-        Route::get('/users', [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
-        Route::get('/users/{id}', [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
-        Route::post('/users/{id}/assign-role', [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
+        Route::get('/users',                    [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
+        Route::get('/users/{id}',               [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
+        Route::post('/users/{id}/assign-role',  [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
         Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
-        Route::post('/users/{id}/reactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
-        Route::get('/roles', [\App\Http\Controllers\Api\UserManagementController::class, 'roles']);
+        Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
+        Route::get('/roles',                    [\App\Http\Controllers\Api\UserManagementController::class, 'roles']);
     });
 });
