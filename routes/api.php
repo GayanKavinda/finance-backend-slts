@@ -92,20 +92,41 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/contractor-bills/{id}/verify', [ContractorBillController::class, 'verify']);
     Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
 
-    Route::get('invoices', [InvoiceController::class, 'index']);
-    Route::post('invoices', [InvoiceController::class, 'store']);
-    // Route::post('invoices/{id}/submit-finance', [InvoiceController::class, 'submitToFinance']);
-    Route::post('invoices/{id}/submit-to-finance', [InvoiceController::class, 'submitToFinance'])->middleware('can:submit-invoice'); // Alias for frontend consistency
-    // Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment');
-    Route::post('invoices/{id}/approve', [InvoiceController::class, 'markPaid'])->middleware('can:approve-payment'); // Alias for frontend consistency
-    Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown']);
-    Route::get('/invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend']);
+    Route::get('invoices', [InvoiceController::class, 'index'])
+        ->middleware('can:view-invoice');
+
+    Route::post('invoices', [InvoiceController::class, 'store'])
+        ->middleware('can:create-invoice');
+
+    Route::put('invoices/{id}', [InvoiceController::class, 'update'])
+        ->middleware('can:edit-invoice');
+
+    Route::post('invoices/{id}/submit-to-finance', [InvoiceController::class, 'submitToFinance'])
+        ->middleware('can:submit-invoice');
+
+    Route::post('invoices/{id}/approve', [InvoiceController::class, 'approveInvoice'])
+        ->middleware('can:approve-payment');
+
+    Route::post('invoices/{id}/reject', [InvoiceController::class, 'rejectInvoice'])
+        ->middleware('can:reject-invoice');
+
+    Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])
+        ->middleware('can:approve-payment');
+
+    Route::get('invoices/{id}/audit-trail', [InvoiceController::class, 'getAuditTrail'])
+        ->middleware('can:view-audit-trail');
+
+    Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown'])
+        ->middleware('can:view-invoice');
+
+    Route::get('/invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend'])
+        ->middleware('can:view-invoice');
 
     Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
     Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
 
     // Route::middleware(['throttle:60,1'])->get('/invoice-summary', [InvoiceSummaryController::class, 'index']);
-    Route::get('/invoice-summary', [InvoiceController::class, 'summary']);
-    Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
+    Route::get('/invoice-summary', [InvoiceController::class, 'summary'])
+        ->middleware('can:view-invoice');
 });

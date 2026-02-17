@@ -20,11 +20,14 @@ class RolePermissionSeeder extends Seeder
 
         //Permissions
         $permissions = [
+            // Invoice permissions
             'create-invoice',
             'edit-invoice',
             'submit-invoice',
             'view-invoice',
             'approve-payment',
+            'reject-invoice',      // NEW: Finance can reject
+            'view-audit-trail',    // NEW: View status history
         ];
 
         foreach ($permissions as $permission) {
@@ -38,22 +41,39 @@ class RolePermissionSeeder extends Seeder
         $viewer = Role::firstOrCreate(['name' => 'Viewer']);
 
         // Assign permissions
-        $admin->givePermissionTo(Permission::all());
+        $admin->syncPermissions(Permission::all());
 
-        $procurement->givePermissionTo([
+        $procurement->syncPermissions([
             'create-invoice',
             'edit-invoice',
             'submit-invoice',
             'view-invoice',
         ]);
 
-        $finance->givePermissionTo([
+        $finance->syncPermissions([
             'view-invoice',
-            'approve-payment'
+            'approve-payment',
+            'reject-invoice',
+            'view-audit-trail',
         ]);
 
-        $viewer->givePermissionTo([
+        $viewer->syncPermissions([
             'view-invoice'
         ]);
+
+        $this->command->info('✅ Permissions and roles seeded successfully!');
+        $this->command->newLine();
+        $this->command->info('📋 Roles & Permissions Summary:');
+        $this->command->newLine();
+
+        $this->command->table(
+            ['Role', 'Permissions'],
+            [
+                ['Admin', implode(', ', $admin->permissions->pluck('name')->toArray())],
+                ['Procurement', implode(', ', $procurement->permissions->pluck('name')->toArray())],
+                ['Finance', implode(', ', $finance->permissions->pluck('name')->toArray())],
+                ['Viewer', implode(', ', $viewer->permissions->pluck('name')->toArray())],
+            ]
+        );
     }
 }

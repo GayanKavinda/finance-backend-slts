@@ -5,31 +5,37 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
+use App\Services\InvoiceWorkflowService;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
+    protected $workflow;
+
+    public function __construct(InvoiceWorkflowService $workflow)
+    {
+        $this->workflow = $workflow;
+    }
+
     // List invoices with filters
     public function index(Request $request)
     {
-        $query = Invoice::with(['purchaseOrder', 'customer', 'taxInvoice'])
-            ->orderByDesc('created_at');
+        $query = Invoice::with([
+            'purchaseOrder',
+            'customer',
+            'taxInvoice',
+            'submitter:id,name',
+            'approver:id,name',
+            'rejecter:id,name',
+            'recordedBy:id,name'
+        ])->orderByDesc('created_at');
 
         if ($request->filled('search')) {
             $query->where('invoice_number', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('status')) {
-            $allowedStatuses = [
-                Invoice::STATUS_DRAFT,
-                Invoice::STATUS_TAX_GENERATED,
-                Invoice::STATUS_SUBMITTED,
-                Invoice::STATUS_PAID,
-            ];
-
-            if (in_array($request->status, $allowedStatuses)) {
-                $query->where('status', $request->status);
-            }
+            $query->where('status', $request->status);
         }
 
         if ($request->filled('customer_id')) {
@@ -92,34 +98,55 @@ class InvoiceController extends Controller
     // Submit invoice to finance
     public function submitToFinance($id)
     {
-
         $invoice = Invoice::findOrFail($id);
+        $this->workflow->submit($invoice);
 
-        if ($invoice->status !== Invoice::STATUS_TAX_GENERATED) {
-            return response()->json([
-                'message' => 'Invoice must have tax generated first'
-            ], 422);
-        }
-
-        DB::transaction(function () use ($invoice) {
-            $invoice->update([
-                'status' => Invoice::STATUS_SUBMITTED,
-            ]);
-        });
-
-        return response()->json($invoice);
+        return response()->json($invoice->fresh()->load([
+            'submitter',
+            'customer',
+            'purchaseOrder',
+            'taxInvoice'
+        ]));
     }
 
-    // Mark invoice as paid (Finance only later via middleware)
+    // New: Approve invoice (Finance role)
+    public function approveInvoice($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $this->workflow->approve($invoice);
+
+        return response()->json($invoice->fresh()->load([
+            'approver',
+            'submitter',
+            'customer',
+            'purchaseOrder',
+            'taxInvoice'
+        ]));
+    }
+
+    // New: Reject invoice (Finance role)
+    public function rejectInvoice(Request $request, $id)
+    {
+        $data = $request->validate([
+            'rejection_reason' => 'required|string|min:10|max:1000',
+        ]);
+
+        $invoice = Invoice::findOrFail($id);
+        $this->workflow->reject($invoice, $data['rejection_reason']);
+
+        return response()->json($invoice->fresh()->load([
+            'rejecter',
+            'submitter',
+            'customer',
+            'purchaseOrder',
+            'taxInvoice'
+        ]));
+    }
+
+    // Mark invoice as paid (Finance only)
     public function markPaid(Request $request, $id)
     {
         $invoice = Invoice::findOrFail($id);
-
-        if ($invoice->status !== Invoice::STATUS_SUBMITTED) {
-            return response()->json([
-                'message' => 'Invoice must be submitted to finance first'
-            ], 422);
-        }
 
         $data = $request->validate([
             'payment_reference' => 'required|string|max:255',
@@ -127,23 +154,31 @@ class InvoiceController extends Controller
             'payment_notes' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($invoice, $data, $request) {
-
-            $invoice->update([
-                'status' => Invoice::STATUS_PAID,
-                'payment_reference' => $data['payment_reference'],
-                'payment_method' => $data['payment_method'],
-                'payment_notes' => $data['payment_notes'] ?? null,
-                'paid_at' => now(),
-                'recorded_by' => $request->user()?->id,
-            ]);
-        });
+        $this->workflow->markPaid($invoice, $data);
 
         return response()->json(
-            $invoice->fresh()->load('recordedBy')
+            $invoice->fresh()->load([
+                'recordedBy',
+                'approver',
+                'submitter',
+                'customer',
+                'purchaseOrder',
+                'taxInvoice'
+            ])
         );
     }
 
+    // New: Get audit trail for an invoice
+    public function getAuditTrail($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        $history = $invoice->statusHistory()
+            ->with('user:id,name,email')
+            ->get();
+
+        return response()->json($history);
+    }
 
     public function monthlyTrend()
     {
