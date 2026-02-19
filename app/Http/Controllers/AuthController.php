@@ -253,6 +253,11 @@ class AuthController extends Controller
         $email = $user ? $user->email : 'unknown';
         Log::info("[AuthController] Logout initiated for user: $email");
 
+        // ✅ Revoke all Sanctum API tokens so Bearer auth stops working immediately
+        if ($user) {
+            $user->tokens()->delete();
+        }
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

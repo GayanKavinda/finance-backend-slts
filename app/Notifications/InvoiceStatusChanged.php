@@ -7,14 +7,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class InvoiceStatusChanged extends Notification
+class InvoiceStatusChanged extends Notification implements ShouldQueue
 {
     use Queueable;
 
     public $invoice;
     public $action;
     public $actor;
-
+    
     /**
      * Create a new notification instance.
      */
@@ -32,7 +32,33 @@ class InvoiceStatusChanged extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
+    }
+
+    /**
+     * Get the mail representation of the notification.
+     */
+    public function toMail(object $notifiable): MailMessage
+    {
+        $subject = match ($this->action) {
+            'submitted' => "Invoice {$this->invoice->invoice_number} Awaiting Approval",
+            'approved' => "Invoice {$this->invoice->invoice_number} Approved",
+            'rejected' => "Invoice {$this->invoice->invoice_number} Rejected",
+            'paid' => "Invoice {$this->invoice->invoice_number} Payment Recorded",
+            default => "Invoice Update: {$this->invoice->invoice_number}",
+        };
+
+        $mail = (new MailMessage())
+            ->subject($subject)
+            ->line("Invoice {$this->invoice->invoice_number} was {$this->action} by {$this->actor->name}.");
+
+        if ($this->action === 'rejected') {
+            $mail->line("Reason: {$this->invoice->rejection_reason}");
+        }
+
+        return $mail
+            ->action('View Invoice', url("/invoices/{$this->invoice->id}"))
+            ->line('Log in to FinancePro to take action.');
     }
 
     /**
