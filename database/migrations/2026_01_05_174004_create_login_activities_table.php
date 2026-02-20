@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('device')->nullable();
             $table->string('platform')->nullable();
             $table->string('browser')->nullable();
+            $table->string('status')->default('success');
             $table->timestamp('created_at')->useCurrent();
         });
     }

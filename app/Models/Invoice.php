@@ -3,17 +3,19 @@
 namespace App\Models;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
+    use HasFactory;
     const STATUS_DRAFT = 'Draft';
-    // const STATUS_SENT = 'Sent';
     const STATUS_TAX_GENERATED = 'Tax Generated';
     const STATUS_SUBMITTED = 'Submitted';
     const STATUS_APPROVED = 'Approved';
     const STATUS_REJECTED = 'Rejected';
-    const STATUS_PAID = 'Paid';
+    const STATUS_PAYMENT_RECEIVED = 'Payment Received';
+    const STATUS_BANKED = 'Banked';
 
     public static function statuses(): array
     {
@@ -23,7 +25,8 @@ class Invoice extends Model
             self::STATUS_SUBMITTED,
             self::STATUS_APPROVED,
             self::STATUS_REJECTED,
-            self::STATUS_PAID,
+            self::STATUS_PAYMENT_RECEIVED,
+            self::STATUS_BANKED,
         ];
     }
 
@@ -46,6 +49,14 @@ class Invoice extends Model
         'rejected_by',
         'rejected_at',
         'rejection_reason',
+        'cheque_number',
+        'bank_name',
+        'payment_amount',
+        'payment_received_date',
+        'receipt_number',
+        'is_banked',
+        'banked_at',
+        'bank_reference',
     ];
 
     protected $casts = [
@@ -87,17 +98,17 @@ class Invoice extends Model
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
-    public function submitter()
+    public function submittedBy()
     {
         return $this->belongsTo(User::class, 'submitted_by');
     }
 
-    public function approver()
+    public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function rejecter()
+    public function rejectedBy()
     {
         return $this->belongsTo(User::class, 'rejected_by');
     }
@@ -116,7 +127,8 @@ class Invoice extends Model
             self::STATUS_DRAFT => [self::STATUS_TAX_GENERATED],
             self::STATUS_TAX_GENERATED => [self::STATUS_SUBMITTED],
             self::STATUS_SUBMITTED => [self::STATUS_APPROVED, self::STATUS_REJECTED],
-            self::STATUS_APPROVED => [self::STATUS_PAID, self::STATUS_REJECTED],
+            self::STATUS_APPROVED => [self::STATUS_PAYMENT_RECEIVED, self::STATUS_REJECTED],
+            self::STATUS_PAYMENT_RECEIVED => [self::STATUS_BANKED],
             self::STATUS_REJECTED => [self::STATUS_DRAFT],
         ];
     }

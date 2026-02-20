@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('purchase_orders', function (Blueprint $table) {
             $table->id();
             $table->string('po_number')->unique();
+            $table->foreignId('job_id')->nullable()->constrained('project_jobs')->nullOnDelete();
             $table->text('po_description');
             $table->decimal('po_amount', 15, 2);
             $table->text('billing_address');

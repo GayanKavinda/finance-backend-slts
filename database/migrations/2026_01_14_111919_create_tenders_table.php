@@ -14,11 +14,14 @@ return new class extends Migration
         Schema::create('tenders', function (Blueprint $table) {
             $table->id();
             $table->string('tender_number')->unique();
+            $table->string('name');
+            $table->text('description')->nullable();
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->decimal('awarded_amount', 15, 2);
+            $table->decimal('budget', 15, 2)->nullable();
             $table->date('start_date');
             $table->date('end_date')->nullable();
-            $table->enum('status', ['Awarded', 'In Progress', 'Completed'])->default('Awarded');
+            $table->string('status')->default('Open');
             $table->timestamps();
         });
     }

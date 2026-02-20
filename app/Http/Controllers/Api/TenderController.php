@@ -12,9 +12,22 @@ class TenderController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Tender::with('customer')->latest()->get());
+        $query = Tender::with('customer')->withCount('jobs');
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('tender_number', 'like', "%{$request->search}%")
+                    ->orWhere('name', 'like', "%{$request->search}%");
+            });
+        }
+
+        return response()->json($query->latest()->paginate(15));
     }
 
     /**
@@ -24,12 +37,17 @@ class TenderController extends Controller
     {
         $data = $request->validate([
             'tender_number' => 'required|string|max:255|unique:tenders,tender_number',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'customer_id' => 'required|exists:customers,id',
             'awarded_amount' => 'required|numeric|min:0',
+            'budget' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'status' => 'nullable|in:Awarded,In Progress,Completed',
+            'status' => 'nullable|in:Open,In Progress,Closed',
         ]);
+
+        $data['status'] = $data['status'] ?? Tender::STATUS_OPEN;
 
         $tender = Tender::create($data);
 
@@ -39,23 +57,27 @@ class TenderController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Tender $tender)
+    public function show($id)
     {
-        return response()->json($tender->load('customer'));
+        return response()->json(Tender::with(['customer', 'jobs.customer'])->findOrFail($id));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Tender $tender)
+    public function update(Request $request, $id)
     {
+        $tender = Tender::findOrFail($id);
         $data = $request->validate([
             'tender_number' => 'required|string|max:255|unique:tenders,tender_number,' . $tender->id,
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'customer_id' => 'required|exists:customers,id',
             'awarded_amount' => 'required|numeric|min:0',
+            'budget' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'status' => 'nullable|in:Awarded,In Progress,Completed',
+            'status' => 'nullable|in:Open,In Progress,Closed',
         ]);
 
         $tender->update($data);
@@ -66,8 +88,14 @@ class TenderController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Tender $tender)
+    public function destroy($id)
     {
+        $tender = Tender::findOrFail($id);
+
+        if ($tender->jobs()->count() > 0) {
+            return response()->json(['message' => 'Cannot delete tender with active jobs'], 422);
+        }
+
         $tender->delete();
 
         return response()->json(['message' => 'Tender deleted']);

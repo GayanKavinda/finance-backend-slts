@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
 {
+    use HasFactory;
     const STATUS_DRAFT = 'Draft';
     const STATUS_APPROVED = 'Approved';
 
@@ -16,8 +18,14 @@ class PurchaseOrder extends Model
         'billing_address',
         'tender_id',
         'customer_id',
+        'job_id',
         'status',
     ];
+
+    public function job()
+    {
+        return $this->belongsTo(Job::class);
+    }
 
     public function tender()
     {

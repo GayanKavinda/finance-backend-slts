@@ -5,38 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Tender extends Model
+class ProjectJob extends Model
 {
     use HasFactory;
 
-    const STATUS_OPEN = 'Open';
+    const STATUS_PENDING = 'Pending';
     const STATUS_IN_PROGRESS = 'In Progress';
-    const STATUS_CLOSED = 'Closed';
+    const STATUS_COMPLETED = 'Completed';
 
     protected $fillable = [
-        'tender_number',
-        'name',
-        'description',
+        'tender_id',
         'customer_id',
-        'awarded_amount',
-        'budget',
-        'start_date',
-        'end_date',
+        'name',
+        'project_value',
+        'description',
         'status',
     ];
+
+    public function tender()
+    {
+        return $this->belongsTo(Tender::class);
+    }
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function jobs()
+    public function contractor()
     {
-        return $this->hasMany(ProjectJob::class, 'tender_id');
+        return $this->belongsTo(Contractor::class);
     }
 
     public function purchaseOrders()
     {
-        return $this->hasMany(PurchaseOrder::class);
+        return $this->hasMany(PurchaseOrder::class, 'job_id');
     }
 }

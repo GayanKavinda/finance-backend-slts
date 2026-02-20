@@ -26,20 +26,33 @@ class RolePermissionSeeder extends Seeder
             'submit-invoice',
             'view-invoice',
             'approve-payment',
-            'reject-invoice',      // NEW: Finance can reject
-            'view-audit-trail',    // NEW: View status history
-            'manage-users',        // NEW: Admin user management
+            'reject-invoice',
+            'view-audit-trail',
+            'manage-users',
+
+            // Roadmap - Procurement
+            'manage-customers',
+            'manage-tenders',
+            'manage-jobs',
+            'manage-pos',
+
+            // Roadmap - Finance
+            'record-payment',
+            'mark-banked',
+
+            // Roadmap - Admin
+            'manage-roles',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         //Roles
-        $admin = Role::firstOrCreate(['name' => 'Admin']);
-        $procurement = Role::firstOrCreate(['name' => 'Procurement']);
-        $finance = Role::firstOrCreate(['name' => 'Finance']);
-        $viewer = Role::firstOrCreate(['name' => 'Viewer']);
+        $admin = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $procurement = Role::firstOrCreate(['name' => 'Procurement', 'guard_name' => 'web']);
+        $finance = Role::firstOrCreate(['name' => 'Finance', 'guard_name' => 'web']);
+        $viewer = Role::firstOrCreate(['name' => 'Viewer', 'guard_name' => 'web']);
 
         // Assign permissions
         $admin->syncPermissions(Permission::all());
@@ -49,6 +62,10 @@ class RolePermissionSeeder extends Seeder
             'edit-invoice',
             'submit-invoice',
             'view-invoice',
+            'manage-customers',
+            'manage-tenders',
+            'manage-jobs',
+            'manage-pos',
         ]);
 
         $finance->syncPermissions([
@@ -56,6 +73,8 @@ class RolePermissionSeeder extends Seeder
             'approve-payment',
             'reject-invoice',
             'view-audit-trail',
+            'record-payment',
+            'mark-banked',
         ]);
 
         $viewer->syncPermissions([

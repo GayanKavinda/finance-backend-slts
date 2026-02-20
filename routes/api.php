@@ -16,6 +16,10 @@ use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\TaxInvoiceController;
 use App\Http\Controllers\Api\InvoicePdfController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\InternalReceiptPdfController;
+use App\Http\Controllers\Api\PurchaseOrderPdfController;
 
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
     ->middleware('throttle:30,1');
@@ -79,12 +83,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/active-sessions',               [SecurityController::class, 'getActiveSessions']);
     Route::delete('/revoke-session/{sessionId}', [SecurityController::class, 'revokeSession']);
 
-    // ── Master Data ───────────────────────────────────────────────
+    // ── Master Data & Procurement ─────────────────────────────────
 
     Route::apiResource('customers',   CustomerController::class);
     Route::apiResource('contractors', ContractorController::class);
     Route::apiResource('tenders',     TenderController::class);
     Route::apiResource('jobs',        JobController::class);
+    Route::apiResource('purchase-orders', PurchaseOrderController::class);
 
     // ── Contractor Bills ──────────────────────────────────────────
 
@@ -93,13 +98,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify']);
     Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
 
-    // ── Purchase Orders & Tax ─────────────────────────────────────
+    // ── Invoices & Payments ───────────────────────────────────────
 
-    Route::apiResource('purchase-orders', PurchaseOrderController::class)->only(['index', 'store', 'show']);
-    Route::post('/tax-invoices', [TaxInvoiceController::class, 'store']);
-
-    // ── Invoices ──────────────────────────────────────────────────
-    // Static paths BEFORE parameterized {id} routes.
+    // Dashboard Summary
+    Route::get('executive-summary', [InvoiceController::class, 'executiveSummary']);
+    Route::get('invoice-summary', [InvoiceController::class, 'executiveSummary']); // Alias for frontend compatibility
+    Route::get('invoices/summary', [InvoiceController::class, 'executiveSummary']); // Alias
 
     Route::get('invoices/status-breakdown', [InvoiceController::class, 'statusBreakdown'])
         ->middleware('can:view-invoice');
@@ -107,14 +111,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend'])
         ->middleware('can:view-invoice');
 
-    Route::get('/invoice-summary', [InvoiceController::class, 'summary'])
-        ->middleware('can:view-invoice');
+    // Payment actions
+    Route::post('invoices/{id}/record-payment', [InvoiceController::class, 'recordPayment']);
+    Route::post('invoices/{id}/mark-banked', [InvoiceController::class, 'markAsBanked']);
 
+    // Standard Invoice CRUD
     Route::get('invoices', [InvoiceController::class, 'index'])
         ->middleware('can:view-invoice');
 
     Route::post('invoices', [InvoiceController::class, 'store'])
         ->middleware('can:create-invoice');
+
+    Route::get('invoices/{id}', [InvoiceController::class, 'show'])
+        ->middleware('can:view-invoice');
 
     Route::put('invoices/{id}', [InvoiceController::class, 'update'])
         ->middleware('can:edit-invoice');
@@ -128,44 +137,42 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('invoices/{id}/reject', [InvoiceController::class, 'rejectInvoice'])
         ->middleware('can:reject-invoice');
 
-    Route::post('invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])
-        ->middleware('can:approve-payment');
-
     Route::get('invoices/{id}/audit-trail', [InvoiceController::class, 'getAuditTrail'])
         ->middleware('can:view-audit-trail');
 
+    // ── PDF Generation ────────────────────────────────────────────
+
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
+    Route::get('/invoices/{id}/download-receipt', [InternalReceiptPdfController::class, 'download']);
+    Route::get('/purchase-orders/{id}/download-pdf', [PurchaseOrderPdfController::class, 'download']);
 
     // ── Notifications ─────────────────────────────────────────────
-    //
-    // ⚠️  Same ordering rule applies here:
-    //     /notifications/unread   — static, must come FIRST
-    //     /notifications/read-all — static, must come FIRST
-    //     /notifications/{id}/... — parameterized, must come AFTER
-    //
-    // If {id} routes appear first, Laravel matches "unread" and "read-all"
-    // as notification IDs, returning 404 "notification not found".
 
     Route::get('/notifications',             [NotificationController::class, 'index']);
-
-    // Static sub-routes BEFORE {id} sub-routes
     Route::get('/notifications/unread',      [NotificationController::class, 'unread']);
     Route::post('/notifications/read-all',   [NotificationController::class, 'markAllAsRead']);
-
-    // Parameterized sub-routes AFTER
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markAsRead']);
     Route::delete('/notifications/{id}',     [NotificationController::class, 'destroy']);
 
-    Route::prefix('admin')->middleware('can:manage-users')->group(function () {
-        Route::get('/users',                    [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
-        Route::get('/users/{id}',               [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
-        Route::post('/users/{id}/assign-role',  [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
-        Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
-        Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
-        Route::get('/roles',                    [\App\Http\Controllers\Api\UserManagementController::class, 'roles']);
+    // ── Admin - User & Role Management ────────────────────────────
+
+    Route::prefix('admin')->group(function () {
+        Route::middleware('can:manage-users')->group(function () {
+            Route::get('/users',                    [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
+            Route::get('/users/{id}',               [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
+            Route::post('/users/{id}/assign-role',  [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
+            Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
+            Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
+        });
+
+        // Role & Permission Management
+        Route::apiResource('roles', RoleController::class);
+        Route::get('permissions', [PermissionController::class, 'index']);
     });
 
     // ── System Monitoring ─────────────────────────────────────────
-    Route::get('/system/metrics', [\App\Http\Controllers\Api\SystemMonitorController::class, 'getMetrics']);
-    Route::get('/system/logs',    [\App\Http\Controllers\Api\SystemMonitorController::class, 'getLogs']);
+    Route::get('/system/metrics', [\App\Http\Controllers\Api\SystemMonitorController::class, 'getMetrics'])
+        ->middleware('can:manage-users');
+    Route::get('/system/logs',    [\App\Http\Controllers\Api\SystemMonitorController::class, 'getLogs'])
+        ->middleware('can:manage-users');
 });

@@ -18,7 +18,40 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->decimal('invoice_amount', 15, 2);
             $table->date('invoice_date');
-            $table->enum('status', ['Draft', 'Tax Generated', 'Submitted', 'Paid'])->default('Draft');
+
+            // Status with new values
+            $table->enum('status', ['Draft', 'Tax Generated', 'Submitted', 'Approved', 'Rejected', 'Paid'])->default('Draft');
+
+            // Payment Metadata
+            $table->string('payment_reference')->nullable();
+            $table->string('payment_method')->nullable();
+            $table->timestamp('paid_at')->nullable();
+            $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('payment_notes')->nullable();
+
+            // Roadmap Payment Fields
+            $table->string('cheque_number')->nullable();
+            $table->string('bank_name')->nullable();
+            $table->decimal('payment_amount', 15, 2)->nullable();
+            $table->date('payment_received_date')->nullable();
+
+            // Internal Receipt
+            $table->string('receipt_number')->nullable()->unique();
+
+            // Banking Fields
+            $table->boolean('is_banked')->default(false);
+            $table->date('banked_at')->nullable();
+            $table->string('bank_reference')->nullable();
+
+            // Finance Workflow
+            $table->foreignId('submitted_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('submitted_at')->nullable();
+            $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('approved_at')->nullable();
+            $table->foreignId('rejected_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('rejected_at')->nullable();
+            $table->text('rejection_reason')->nullable();
+
             $table->timestamps();
         });
     }

@@ -15,6 +15,15 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
+            $table->foreignId('customer_id')
+                ->nullable()
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->string('name');
+            $table->decimal('project_value', 15, 2)->nullable();
+            $table->text('description')->nullable();
+
             $table->foreignId('contractor_id')
                 ->nullable()
                 ->constrained()

@@ -14,7 +14,11 @@ class Job extends Model
 
     protected $fillable = [
         'tender_id',
+        'customer_id',
         'contractor_id',
+        'name',
+        'project_value',
+        'description',
         'status',
         'completed_at',
     ];
@@ -26,6 +30,11 @@ class Job extends Model
     public function tender()
     {
         return $this->belongsTo(Tender::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function contractor()

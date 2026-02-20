@@ -41,9 +41,45 @@ class SystemMonitorController extends Controller
         $logs = [];
 
         if (File::exists($logPath)) {
-            // Read last 100 lines
-            $fileContent = shell_exec("powershell -Command \"Get-Content '$logPath' -Tail 100\"");
-            $lines = explode("\n", trim($fileContent));
+            $lines = [];
+            $handle = fopen($logPath, "r");
+            if ($handle) {
+                // Efficiently read last 100 lines
+                $linecount = 0;
+                $pos = -2;
+                $eof = "";
+                $maxLines = 100;
+
+                while ($linecount < $maxLines) {
+                    if (fseek($handle, $pos, SEEK_END) == -1) {
+                        rewind($handle);
+                        $lines[] = fgets($handle);
+                        break;
+                    }
+                    $char = fgetc($handle);
+                    if ($char == "\n" || $char == "\r") {
+                        if ($eof != "" && ($char != $eof)) { // handle \r\n
+                            $pos--;
+                            continue;
+                        }
+                        $line = fgets($handle);
+                        if ($line !== false) {
+                            $lines[] = $line;
+                        }
+                        $eof = $char;
+                        $linecount++;
+                    }
+                    $pos--;
+                }
+                fclose($handle);
+            }
+
+            // If the above method failed to get lines (e.g. small file), fallback to reading whole file
+            if (empty($lines)) {
+                $fileContent = File::get($logPath);
+                $lines = explode("\n", $fileContent);
+                $lines = array_slice($lines, -100);
+            }
 
             foreach ($lines as $line) {
                 if (empty(trim($line))) continue;
@@ -53,28 +89,32 @@ class SystemMonitorController extends Controller
 
                 if ($matches) {
                     $logs[] = [
-                        'id' => md5($line),
+                        'id' => md5($line . rand()),
                         'time' => date('H:i:s', strtotime($matches['time'])),
                         'type' => strtolower($matches['type']),
                         'title' => ucfirst($matches['type']),
-                        'description' => $matches['description'],
-                        'latency' => rand(5, 50), // Simulated latency for log processing
+                        'description' => substr($matches['description'], 0, 200), // Truncate long messages
+                        'latency' => rand(5, 50),
                     ];
                 } else {
-                    // Fallback for non-standard lines
+                    // Only include lines that look like start of log entry or have relevant info
+                    // Skip stack traces to reduce noise if needed, or include them as 'info'
+                    if (strpos($line, '#') === 0 || strpos($line, 'Stack trace') !== false) {
+                        continue;
+                    }
+
                     $logs[] = [
-                        'id' => md5($line),
+                        'id' => md5($line . rand()),
                         'time' => date('H:i:s'),
                         'type' => 'info',
                         'title' => 'System',
-                        'description' => $line,
+                        'description' => substr($line, 0, 200),
                         'latency' => null,
                     ];
                 }
             }
         }
 
-        // Return reversed to show newest first
         return response()->json(array_reverse($logs));
     }
 
