@@ -156,8 +156,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markAsRead']);
     Route::delete('/notifications/{id}',     [NotificationController::class, 'destroy']);
 
-    // ── Admin: User Management ────────────────────────────────────
-
     Route::prefix('admin')->middleware('can:manage-users')->group(function () {
         Route::get('/users',                    [\App\Http\Controllers\Api\UserManagementController::class, 'index']);
         Route::get('/users/{id}',               [\App\Http\Controllers\Api\UserManagementController::class, 'show']);
@@ -166,4 +164,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
         Route::get('/roles',                    [\App\Http\Controllers\Api\UserManagementController::class, 'roles']);
     });
+
+    // ── System Monitoring ─────────────────────────────────────────
+    Route::get('/system/metrics', [\App\Http\Controllers\Api\SystemMonitorController::class, 'getMetrics']);
+    Route::get('/system/logs',    [\App\Http\Controllers\Api\SystemMonitorController::class, 'getLogs']);
 });
