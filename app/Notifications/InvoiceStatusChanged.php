@@ -7,14 +7,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class InvoiceStatusChanged extends Notification implements ShouldQueue
+class InvoiceStatusChanged extends Notification
 {
     use Queueable;
 
     public $invoice;
     public $action;
     public $actor;
-    
+
     /**
      * Create a new notification instance.
      */

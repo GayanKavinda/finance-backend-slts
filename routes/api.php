@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\InternalReceiptPdfController;
 use App\Http\Controllers\Api\PurchaseOrderPdfController;
+use App\Http\Controllers\Api\QuotationController;
 
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
     ->middleware('throttle:30,1');
@@ -95,8 +96,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/contractor-bills',               [ContractorBillController::class, 'index']);
     Route::post('/contractor-bills',              [ContractorBillController::class, 'store']);
+    Route::post('/contractor-bills/{id}/upload-document', [ContractorBillController::class, 'uploadDocument']);
+    Route::delete('/contractor-bills/documents/{id}', [ContractorBillController::class, 'deleteDocument']);
     Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify']);
     Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
+    Route::post('/contractor-bills/{id}/pay',     [ContractorBillController::class, 'pay']);
+
+    // ── Quotations ────────────────────────────────────────────────
+    Route::get('/jobs/{jobId}/quotations', [QuotationController::class, 'listByJob']);
+    Route::post('/quotations',              [QuotationController::class, 'store']);
+    Route::post('/quotations/{id}/select',  [QuotationController::class, 'select']);
 
     // ── Invoices & Payments ───────────────────────────────────────
 

@@ -8,15 +8,28 @@ class Contractor extends Model
 {
     protected $fillable = [
         'name',
-        'tax_id',
+        'contact_person',
+        'email',
+        'phone',
         'address',
+        'tax_id',
         'contact',
         'bank_details',
+        'bank_account_number',
+        'bank_name',
+        'status',
+        'rating',
+        'notes',
     ];
 
     public function jobs()
     {
-        return $this->hasMany(Job::class);
+        return $this->hasMany(ProjectJob::class, 'selected_contractor_id');
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(ContractorQuotation::class);
     }
 
     public function bills()

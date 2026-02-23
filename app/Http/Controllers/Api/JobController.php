@@ -10,7 +10,7 @@ class JobController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ProjectJob::with(['tender', 'customer', 'contractor'])->withCount('purchaseOrders');
+        $query = ProjectJob::with(['tender', 'customer', 'selectedContractor'])->withCount('purchaseOrders');
 
         if ($request->tender_id) {
             $query->where('tender_id', $request->tender_id);
@@ -29,7 +29,7 @@ class JobController extends Controller
 
     public function show($id)
     {
-        return ProjectJob::with(['tender', 'customer', 'contractor', 'purchaseOrders'])->findOrFail($id);
+        return ProjectJob::with(['tender', 'customer', 'selectedContractor', 'purchaseOrders'])->findOrFail($id);
     }
 
     public function store(Request $request)
@@ -42,6 +42,8 @@ class JobController extends Controller
             'description'   => 'nullable|string',
             'status'        => 'nullable|in:Pending,In Progress,Completed',
         ]);
+
+        $validated['project_value'] = $validated['project_value'] ?? 0;
 
         $validated['status'] = $validated['status'] ?? ProjectJob::STATUS_PENDING;
 
@@ -64,7 +66,7 @@ class JobController extends Controller
 
         $job->update($validated);
 
-        return response()->json($job->load(['tender', 'customer', 'contractor']));
+        return response()->json($job->load(['tender', 'customer', 'selectedContractor']));
     }
 
     public function destroy($id)

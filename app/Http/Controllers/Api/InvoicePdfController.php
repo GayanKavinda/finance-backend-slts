@@ -20,7 +20,9 @@ class InvoicePdfController extends Controller
         if (!in_array($invoice->status, [
             Invoice::STATUS_TAX_GENERATED,
             Invoice::STATUS_SUBMITTED,
-            Invoice::STATUS_PAID,
+            Invoice::STATUS_APPROVED,
+            Invoice::STATUS_PAYMENT_RECEIVED,
+            Invoice::STATUS_BANKED,
         ])) {
             return response()->json([
                 'message' => 'Invoice not finalized'

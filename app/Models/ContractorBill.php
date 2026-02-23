@@ -6,9 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContractorBill extends Model
 {
-    const STATUS_UPLOADED = 'Uploaded';
+    const STATUS_DRAFT = 'Draft';
     const STATUS_VERIFIED = 'Verified';
     const STATUS_APPROVED = 'Approved';
+    const STATUS_PAID = 'Paid';
 
     protected $fillable = [
         'job_id',
@@ -20,16 +21,23 @@ class ContractorBill extends Model
         'status',
         'verified_by',
         'verified_at',
+        'approved_by',
+        'approved_at',
+        'paid_at',
+        'payment_reference',
+        'notes',
     ];
 
     protected $casts = [
         'bill_date' => 'date',
         'verified_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     public function job()
     {
-        return $this->belongsTo(Job::class);
+        return $this->belongsTo(ProjectJob::class, 'job_id');
     }
 
     public function contractor()
@@ -40,5 +48,15 @@ class ContractorBill extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(ContractorBillDocument::class);
     }
 }

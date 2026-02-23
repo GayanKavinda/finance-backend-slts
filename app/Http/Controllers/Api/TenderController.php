@@ -40,13 +40,15 @@ class TenderController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'customer_id' => 'required|exists:customers,id',
-            'awarded_amount' => 'required|numeric|min:0',
+            'awarded_amount' => 'nullable|numeric|min:0',
             'budget' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'status' => 'nullable|in:Open,In Progress,Closed',
         ]);
 
+        $data['awarded_amount'] = $data['awarded_amount'] ?? 0;
+        $data['budget'] = $data['budget'] ?? 0;
         $data['status'] = $data['status'] ?? Tender::STATUS_OPEN;
 
         $tender = Tender::create($data);
@@ -73,7 +75,7 @@ class TenderController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'customer_id' => 'required|exists:customers,id',
-            'awarded_amount' => 'required|numeric|min:0',
+            'awarded_amount' => 'nullable|numeric|min:0',
             'budget' => 'nullable|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',

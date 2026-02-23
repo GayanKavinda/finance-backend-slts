@@ -20,6 +20,17 @@ class ProjectJob extends Model
         'project_value',
         'description',
         'status',
+        'selected_contractor_id',
+        'contractor_quote_amount',
+        'contractor_quote_date',
+        'work_start_date',
+        'work_completion_date',
+    ];
+
+    protected $casts = [
+        'contractor_quote_date' => 'date',
+        'work_start_date' => 'date',
+        'work_completion_date' => 'date',
     ];
 
     public function tender()
@@ -32,9 +43,19 @@ class ProjectJob extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function contractor()
+    public function selectedContractor()
     {
-        return $this->belongsTo(Contractor::class);
+        return $this->belongsTo(Contractor::class, 'selected_contractor_id');
+    }
+
+    public function quotations()
+    {
+        return $this->hasMany(ContractorQuotation::class, 'job_id');
+    }
+
+    public function bills()
+    {
+        return $this->hasMany(ContractorBill::class, 'job_id');
     }
 
     public function purchaseOrders()

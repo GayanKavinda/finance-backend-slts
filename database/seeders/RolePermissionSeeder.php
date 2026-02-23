@@ -42,6 +42,14 @@ class RolePermissionSeeder extends Seeder
 
             // Roadmap - Admin
             'manage-roles',
+
+            // Contractor Management
+            'manage-contractors',
+            'enter-quotations',
+            'select-contractor',
+            'submit-contractor-bill',
+            'approve-contractor-payment',
+            'mark-contractor-paid',
         ];
 
         foreach ($permissions as $permission) {
@@ -66,6 +74,10 @@ class RolePermissionSeeder extends Seeder
             'manage-tenders',
             'manage-jobs',
             'manage-pos',
+            'manage-contractors',
+            'enter-quotations',
+            'select-contractor',
+            'submit-contractor-bill',
         ]);
 
         $finance->syncPermissions([
@@ -75,6 +87,8 @@ class RolePermissionSeeder extends Seeder
             'view-audit-trail',
             'record-payment',
             'mark-banked',
+            'approve-contractor-payment',
+            'mark-contractor-paid',
         ]);
 
         $viewer->syncPermissions([

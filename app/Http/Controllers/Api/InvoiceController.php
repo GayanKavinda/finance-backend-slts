@@ -49,7 +49,7 @@ class InvoiceController extends Controller
         return Invoice::with([
             'purchaseOrder.tender',
             'customer',
-            'statusHistory.changer',
+            'statusHistory.user',
             'submittedBy',
             'approvedBy',
             'rejectedBy'
@@ -63,9 +63,11 @@ class InvoiceController extends Controller
             'po_id' => 'required|exists:purchase_orders,id',
             'customer_id' => 'required|exists:customers,id',
             'invoice_number' => 'required|string|unique:invoices,invoice_number',
-            'invoice_amount' => 'required|numeric|min:0',
+            'invoice_amount' => 'nullable|numeric|min:0',
             'invoice_date' => 'required|date',
         ]);
+
+        $validated['invoice_amount'] = $validated['invoice_amount'] ?? 0;
 
         $invoice = Invoice::create([
             ...$validated,
@@ -87,7 +89,7 @@ class InvoiceController extends Controller
         }
 
         $validated = $request->validate([
-            'invoice_amount' => 'required|numeric|min:0',
+            'invoice_amount' => 'nullable|numeric|min:0',
             'invoice_date' => 'required|date',
         ]);
 
@@ -100,8 +102,8 @@ class InvoiceController extends Controller
     public function submitToFinance($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $this->workflow->transitionTo($invoice, Invoice::STATUS_TAX_GENERATED, Auth::user());
-        return response()->json(['message' => 'Invoice submitted for tax generation']);
+        $this->workflow->transitionTo($invoice, Invoice::STATUS_SUBMITTED, Auth::user());
+        return response()->json(['message' => 'Invoice submitted to finance']);
     }
 
     // Approve
@@ -187,36 +189,29 @@ class InvoiceController extends Controller
             'payment_received_date' => 'required|date',
         ]);
 
-        DB::transaction(function () use ($invoice, $validated) {
-            $oldStatus = $invoice->status;
+        // Generate receipt number: RCP-YYYY-XXXX
+        $receiptNumber = 'RCP-' . date('Y') . '-' . str_pad(
+            Invoice::where('receipt_number', 'like', 'RCP-' . date('Y') . '-%')->count() + 1,
+            4,
+            '0',
+            STR_PAD_LEFT
+        );
 
-            // Generate receipt number: RCP-YYYY-XXXX
-            $receiptNumber = 'RCP-' . date('Y') . '-' . str_pad(
-                Invoice::where('receipt_number', 'like', 'RCP-' . date('Y') . '-%')->count() + 1,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+        $invoice->update([
+            'cheque_number' => $validated['cheque_number'],
+            'bank_name' => $validated['bank_name'],
+            'payment_amount' => $validated['payment_amount'],
+            'payment_received_date' => $validated['payment_received_date'],
+            'receipt_number' => $receiptNumber,
+            'recorded_by' => Auth::id(),
+        ]);
 
-            $invoice->update([
-                'status' => Invoice::STATUS_PAYMENT_RECEIVED,
-                'cheque_number' => $validated['cheque_number'],
-                'bank_name' => $validated['bank_name'],
-                'payment_amount' => $validated['payment_amount'],
-                'payment_received_date' => $validated['payment_received_date'],
-                'receipt_number' => $receiptNumber,
-                'recorded_by' => Auth::id(),
-            ]);
-
-            // Log status history
-            \App\Models\InvoiceStatusHistory::create([
-                'invoice_id' => $invoice->id,
-                'old_status' => $oldStatus,
-                'new_status' => Invoice::STATUS_PAYMENT_RECEIVED,
-                'changed_by' => Auth::id(),
-                'notes' => "Payment received: Cheque {$validated['cheque_number']} from {$validated['bank_name']}",
-            ]);
-        });
+        $this->workflow->transitionTo(
+            $invoice,
+            Invoice::STATUS_PAYMENT_RECEIVED,
+            Auth::user(),
+            "Payment received: Cheque {$validated['cheque_number']} from {$validated['bank_name']}"
+        );
 
         return response()->json([
             'message' => 'Payment recorded. Internal receipt generated.',
@@ -243,29 +238,36 @@ class InvoiceController extends Controller
             'bank_reference' => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($invoice, $validated) {
-            $oldStatus = $invoice->status;
+        $invoice->update([
+            'is_banked' => true,
+            'banked_at' => $validated['banked_at'],
+            'bank_reference' => $validated['bank_reference'] ?? null,
+        ]);
 
-            $invoice->update([
-                'status' => Invoice::STATUS_BANKED,
-                'is_banked' => true,
-                'banked_at' => $validated['banked_at'],
-                'bank_reference' => $validated['bank_reference'] ?? null,
-            ]);
-
-            // Log status history
-            \App\Models\InvoiceStatusHistory::create([
-                'invoice_id' => $invoice->id,
-                'old_status' => $oldStatus,
-                'new_status' => Invoice::STATUS_BANKED,
-                'changed_by' => Auth::id(),
-                'notes' => "Marked as banked on {$validated['banked_at']}",
-            ]);
-        });
+        $this->workflow->transitionTo(
+            $invoice,
+            Invoice::STATUS_BANKED,
+            Auth::user(),
+            "Marked as banked on {$validated['banked_at']}"
+        );
 
         return response()->json([
             'message' => 'Invoice marked as banked. Transaction complete.',
             'invoice' => $invoice->load(['customer', 'purchaseOrder'])
         ]);
+    }
+
+    /**
+     * Get the audit trail (status history) for an invoice
+     */
+    public function getAuditTrail($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        $history = $invoice->statusHistory()
+            ->with('user:id,name')
+            ->get();
+
+        return response()->json($history);
     }
 }

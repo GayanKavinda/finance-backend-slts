@@ -5,15 +5,26 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ContractorBill;
+use App\Models\ContractorBillDocument;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Services\ContractorNotificationService;
 
 class ContractorBillController extends Controller
 {
+    protected $notifications;
+
+    public function __construct(ContractorNotificationService $notifications)
+    {
+        $this->notifications = $notifications;
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return ContractorBill::with(['job.tender', 'contractor'])->latest()->get();
+        return ContractorBill::with(['job', 'contractor', 'documents'])->latest()->get();
     }
 
     /**
@@ -25,14 +36,67 @@ class ContractorBillController extends Controller
             'job_id' => 'required|exists:project_jobs,id',
             'contractor_id' => 'required|exists:contractors,id',
             'bill_number' => 'required|string|max:100|unique:contractor_bills,bill_number',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'nullable|numeric|min:0',
             'bill_date' => 'required|date',
-            'document_path' => 'required|string',
+            'notes' => 'nullable|string',
         ]);
+
+        $data['amount'] = $data['amount'] ?? 0;
+
+        $data['status'] = ContractorBill::STATUS_DRAFT;
+        $data['document_path'] = ''; // Legacy field compatibility
 
         $bill = ContractorBill::create($data);
 
         return response()->json($bill->load(['job', 'contractor']), 201);
+    }
+
+    /**
+     * Upload a document to a bill
+     */
+    public function uploadDocument(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10MB
+            'document_type' => 'required|string',
+            'description' => 'nullable|string',
+        ]);
+
+        $bill = ContractorBill::findOrFail($id);
+
+        $file = $request->file('file');
+        $path = $file->store("contractor_bills/{$bill->id}", 'public');
+
+        $document = ContractorBillDocument::create([
+            'contractor_bill_id' => $bill->id,
+            'document_type' => $request->document_type,
+            'file_name' => $file->getClientOriginalName(),
+            'file_path' => $path,
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'uploaded_by' => $request->user()->id,
+            'description' => $request->description,
+        ]);
+
+        return response()->json($document, 201);
+    }
+
+    /**
+     * Delete a document
+     */
+    public function deleteDocument($id)
+    {
+        $document = ContractorBillDocument::findOrFail($id);
+        $bill = $document->bill;
+
+        if ($bill->status !== ContractorBill::STATUS_DRAFT) {
+            return response()->json(['message' => 'Cannot delete documents after verification'], 422);
+        }
+
+        Storage::disk('public')->delete($document->file_path);
+        $document->delete();
+
+        return response()->json(['message' => 'Document deleted successfully']);
     }
 
     /**
@@ -41,10 +105,16 @@ class ContractorBillController extends Controller
     public function verify(Request $request, $id)
     {
         $bill = ContractorBill::findOrFail($id);
-        
-        if ($bill->status !== ContractorBill::STATUS_UPLOADED) {
+
+        if ($bill->status !== ContractorBill::STATUS_DRAFT) {
             return response()->json([
-                'message' => 'Only uploaded bills can be verified'
+                'message' => 'Only draft bills can be verified'
+            ], 422);
+        }
+
+        if ($bill->documents()->count() === 0) {
+            return response()->json([
+                'message' => 'At least one document (e.g., Contractor Bill) is required'
             ], 422);
         }
 
@@ -54,13 +124,15 @@ class ContractorBillController extends Controller
             'verified_at' => now(),
         ]);
 
-        return response()->json($bill->load(['job', 'contractor', 'verifier']));
+        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_VERIFIED, $request->user());
+
+        return response()->json($bill->load(['job', 'contractor', 'verifier', 'documents']));
     }
 
     /**
-     * Approve a contractor bill
+     * Approve a contractor bill (Finance)
      */
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
         $bill = ContractorBill::findOrFail($id);
 
@@ -72,8 +144,41 @@ class ContractorBillController extends Controller
 
         $bill->update([
             'status' => ContractorBill::STATUS_APPROVED,
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
         ]);
 
-        return response()->json($bill->load(['job', 'contractor']));
+        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_APPROVED, $request->user());
+
+        return response()->json($bill->load(['job', 'contractor', 'approver', 'documents']));
+    }
+
+    /**
+     * Mark a contractor bill as Paid (Finance)
+     */
+    public function pay(Request $request, $id)
+    {
+        $bill = ContractorBill::findOrFail($id);
+
+        if ($bill->status !== ContractorBill::STATUS_APPROVED) {
+            return response()->json([
+                'message' => 'Bill must be approved before payment'
+            ], 422);
+        }
+
+        $request->validate([
+            'payment_reference' => 'required|string|max:255',
+            'paid_at' => 'required|date',
+        ]);
+
+        $bill->update([
+            'status' => ContractorBill::STATUS_PAID,
+            'payment_reference' => $request->payment_reference,
+            'paid_at' => $request->paid_at,
+        ]);
+
+        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_PAID, $request->user());
+
+        return response()->json($bill->load(['job', 'contractor', 'documents']));
     }
 }

@@ -42,13 +42,15 @@ class PurchaseOrderController extends Controller
         $data = $request->validate([
             'po_number' => 'required|string|unique:purchase_orders,po_number',
             'po_description' => 'nullable|string',
-            'po_amount' => 'required|numeric|min:0',
+            'po_amount' => 'nullable|numeric|min:0',
             'billing_address' => 'required|string',
             'job_id' => 'required|exists:project_jobs,id',
             'tender_id' => 'required|exists:tenders,id',
             'customer_id' => 'required|exists:customers,id',
             'status' => 'nullable|in:Draft,Approved',
         ]);
+
+        $data['po_amount'] = $data['po_amount'] ?? 0;
 
         $data['status'] = $data['status'] ?? PurchaseOrder::STATUS_DRAFT;
 
@@ -81,7 +83,7 @@ class PurchaseOrderController extends Controller
 
         $data = $request->validate([
             'po_description' => 'nullable|string',
-            'po_amount' => 'required|numeric|min:0',
+            'po_amount' => 'nullable|numeric|min:0',
             'billing_address' => 'required|string',
             'status' => 'nullable|in:Draft,Approved',
         ]);

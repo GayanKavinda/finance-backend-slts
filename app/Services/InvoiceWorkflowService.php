@@ -50,16 +50,23 @@ class InvoiceWorkflowService
 
     protected function handleNotifications(Invoice $invoice, string $status, User $actor): void
     {
-        if ($status === Invoice::STATUS_SUBMITTED) {
+        if ($status === Invoice::STATUS_SUBMITTED || $status === Invoice::STATUS_TAX_GENERATED) {
             $financeUsers = User::permission('approve-payment')->get();
-            Notification::send($financeUsers, new InvoiceStatusChanged($invoice, 'submitted', $actor));
+            Notification::send($financeUsers, new InvoiceStatusChanged($invoice, strtolower($status), $actor));
         } elseif ($status === Invoice::STATUS_APPROVED) {
-            if ($invoice->submitter) {
-                $invoice->submitter->notify(new InvoiceStatusChanged($invoice, 'approved', $actor));
+            if ($invoice->submittedBy) {
+                $invoice->submittedBy->notify(new InvoiceStatusChanged($invoice, 'approved', $actor));
             }
         } elseif ($status === Invoice::STATUS_REJECTED) {
-            if ($invoice->submitter) {
-                $invoice->submitter->notify(new InvoiceStatusChanged($invoice, 'rejected', $actor));
+            if ($invoice->submittedBy) {
+                $invoice->submittedBy->notify(new InvoiceStatusChanged($invoice, 'rejected', $actor));
+            }
+        } elseif ($status === Invoice::STATUS_PAYMENT_RECEIVED || $status === Invoice::STATUS_BANKED) {
+            $financeUsers = User::permission('approve-payment')->get();
+            Notification::send($financeUsers, new InvoiceStatusChanged($invoice, strtolower($status), $actor));
+
+            if ($invoice->submittedBy) {
+                $invoice->submittedBy->notify(new InvoiceStatusChanged($invoice, strtolower($status), $actor));
             }
         }
     }
@@ -81,7 +88,7 @@ class InvoiceWorkflowService
             'old_status' => $oldStatus,
             'new_status' => $newStatus,
             'changed_by' => Auth::id(),
-            'notes' => $reason, // Note: original model might use 'reason' or 'notes'. The migration checked earlier used 'notes' in recordPayment.
+            'reason' => $reason,
         ]);
     }
 }
