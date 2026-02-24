@@ -41,6 +41,7 @@ class PurchaseOrderController extends Controller
     {
         $data = $request->validate([
             'po_number' => 'required|string|unique:purchase_orders,po_number',
+            'po_date' => 'required|date',
             'po_description' => 'nullable|string',
             'po_amount' => 'nullable|numeric|min:0',
             'billing_address' => 'required|string',
@@ -82,6 +83,7 @@ class PurchaseOrderController extends Controller
         }
 
         $data = $request->validate([
+            'po_date' => 'required|date',
             'po_description' => 'nullable|string',
             'po_amount' => 'nullable|numeric|min:0',
             'billing_address' => 'required|string',

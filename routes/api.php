@@ -99,7 +99,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/contractor-bills/{id}/upload-document', [ContractorBillController::class, 'uploadDocument']);
     Route::delete('/contractor-bills/documents/{id}', [ContractorBillController::class, 'deleteDocument']);
     Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify']);
+    Route::post('/contractor-bills/{id}/submit', [ContractorBillController::class, 'submit']);
     Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
+    Route::post('/contractor-bills/{id}/reject', [ContractorBillController::class, 'reject']);
     Route::post('/contractor-bills/{id}/pay',     [ContractorBillController::class, 'pay']);
 
     // ── Quotations ────────────────────────────────────────────────

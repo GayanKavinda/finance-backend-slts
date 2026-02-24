@@ -8,8 +8,10 @@ class ContractorBill extends Model
 {
     const STATUS_DRAFT = 'Draft';
     const STATUS_VERIFIED = 'Verified';
+    const STATUS_SUBMITTED = 'Submitted';
     const STATUS_APPROVED = 'Approved';
     const STATUS_PAID = 'Paid';
+    const STATUS_REJECTED = 'Rejected';
 
     protected $fillable = [
         'job_id',
@@ -21,9 +23,14 @@ class ContractorBill extends Model
         'status',
         'verified_by',
         'verified_at',
+        'submitted_by',
+        'submitted_at',
         'approved_by',
         'approved_at',
         'paid_at',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
         'payment_reference',
         'notes',
     ];
@@ -31,8 +38,10 @@ class ContractorBill extends Model
     protected $casts = [
         'bill_date' => 'date',
         'verified_at' => 'datetime',
+        'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
         'paid_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function job()
@@ -53,6 +62,16 @@ class ContractorBill extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function submitter()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function documents()

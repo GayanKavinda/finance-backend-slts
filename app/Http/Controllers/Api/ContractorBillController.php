@@ -130,15 +130,39 @@ class ContractorBillController extends Controller
     }
 
     /**
+     * Submit a Contractor Bill to Finance
+     */
+    public function submit(Request $request, $id)
+    {
+        $bill = ContractorBill::findOrFail($id);
+
+        if ($bill->status !== ContractorBill::STATUS_VERIFIED) {
+            return response()->json([
+                'message' => 'Only verified bills can be submitted to finance'
+            ], 422);
+        }
+
+        $bill->update([
+            'status' => ContractorBill::STATUS_SUBMITTED,
+            'submitted_by' => $request->user()->id,
+            'submitted_at' => now(),
+        ]);
+
+        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_SUBMITTED, $request->user());
+
+        return response()->json($bill->load(['job', 'contractor', 'submitter', 'documents']));
+    }
+
+    /**
      * Approve a contractor bill (Finance)
      */
     public function approve(Request $request, $id)
     {
         $bill = ContractorBill::findOrFail($id);
 
-        if ($bill->status !== ContractorBill::STATUS_VERIFIED) {
+        if ($bill->status !== ContractorBill::STATUS_SUBMITTED) {
             return response()->json([
-                'message' => 'Bill must be verified before approval'
+                'message' => 'Bill must be submitted to finance before approval'
             ], 422);
         }
 
@@ -151,6 +175,40 @@ class ContractorBillController extends Controller
         $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_APPROVED, $request->user());
 
         return response()->json($bill->load(['job', 'contractor', 'approver', 'documents']));
+    }
+
+    /**
+     * Reject a contractor bill
+     */
+    public function reject(Request $request, $id)
+    {
+        $bill = ContractorBill::findOrFail($id);
+
+        $allowed = [
+            ContractorBill::STATUS_SUBMITTED,
+            ContractorBill::STATUS_APPROVED
+        ];
+
+        if (!in_array($bill->status, $allowed)) {
+            return response()->json([
+                'message' => 'Only submitted or approved bills can be rejected'
+            ], 422);
+        }
+
+        $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+
+        $bill->update([
+            'status' => ContractorBill::STATUS_REJECTED,
+            'rejected_by' => $request->user()->id,
+            'rejected_at' => now(),
+            'rejection_reason' => $request->reason,
+        ]);
+
+        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_REJECTED, $request->user());
+
+        return response()->json($bill->load(['job', 'contractor', 'rejecter', 'documents']));
     }
 
     /**

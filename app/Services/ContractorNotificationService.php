@@ -29,6 +29,13 @@ class ContractorNotificationService
         $notification = new ContractorActivityNotification($bill, 'bill', $action, $actor);
 
         if ($status === ContractorBill::STATUS_VERIFIED) {
+            // Notify procurement manager to submit to finance
+            $procurementManagers = User::permission('submit-contractor-bill')->get();
+            if ($procurementManagers->isEmpty()) {
+                $procurementManagers = User::permission('enter-quotations')->get();
+            }
+            Notification::send($procurementManagers, $notification);
+        } elseif ($status === ContractorBill::STATUS_SUBMITTED) {
             // Notify Finance to approve
             $financeUsers = User::permission('approve-payment')->get();
             Notification::send($financeUsers, $notification);
@@ -40,6 +47,10 @@ class ContractorNotificationService
             // Also notify Finance users with specific payment permission
             $financeUsers = User::permission('mark-contractor-paid')->get();
             Notification::send($financeUsers, $notification);
+        } elseif ($status === ContractorBill::STATUS_REJECTED) {
+            // Notify Procurement that bill needs central correction
+            $procurementUsers = User::permission('enter-quotations')->get();
+            Notification::send($procurementUsers, $notification);
         } elseif ($status === ContractorBill::STATUS_PAID) {
             // Notify all relevant parties
             $relevantUsers = User::permission('enter-quotations')->get();

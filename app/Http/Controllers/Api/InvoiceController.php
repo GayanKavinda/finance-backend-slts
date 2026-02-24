@@ -154,6 +154,16 @@ class InvoiceController extends Controller
      */
     public function executiveSummary()
     {
+        $totalContractorCosts = \App\Models\ContractorBill::where('status', \App\Models\ContractorBill::STATUS_PAID)->sum('amount');
+        $pendingContractorPayments = \App\Models\ContractorBill::whereIn('status', [
+            \App\Models\ContractorBill::STATUS_SUBMITTED,
+            \App\Models\ContractorBill::STATUS_APPROVED
+        ])->sum('amount');
+
+        // Profit calculation based on active/completed jobs with selected contractors
+        $estimatedProjectProfit = \App\Models\ProjectJob::whereNotNull('selected_contractor_id')
+            ->sum(DB::raw('project_value - contractor_quote_amount'));
+
         return response()->json([
             'total_tender_value' => \App\Models\Tender::sum('budget') ?: \App\Models\Tender::sum('awarded_amount'),
             'total_po_value' => \App\Models\PurchaseOrder::sum('po_amount'),
@@ -165,7 +175,13 @@ class InvoiceController extends Controller
             'gross_amount' => Invoice::sum('invoice_amount'),
             'banked_amount' => Invoice::where('status', Invoice::STATUS_BANKED)->sum('payment_amount'),
             'pending_amount' => Invoice::whereNotIn('status', [Invoice::STATUS_BANKED, Invoice::STATUS_REJECTED])->sum('invoice_amount'),
-            'avg_approval_time_hours' => 0, // Temporarily disabled due to missing updated_at column in history table
+            'total_contractor_costs' => $totalContractorCosts,
+            'pending_contractor_payments' => $pendingContractorPayments,
+            'estimated_project_profit' => $estimatedProjectProfit,
+            'avg_approval_time_hours' => Invoice::whereNotNull('submitted_at')
+                ->whereNotNull('approved_at')
+                ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, approved_at)) as avg_hours')
+                ->value('avg_hours') ?? 0,
         ]);
     }
 

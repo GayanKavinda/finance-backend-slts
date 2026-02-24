@@ -13,6 +13,7 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number',
+        'po_date',
         'po_description',
         'po_amount',
         'billing_address',
@@ -24,7 +25,7 @@ class PurchaseOrder extends Model
 
     public function job()
     {
-        return $this->belongsTo(Job::class);
+        return $this->belongsTo(ProjectJob::class, 'job_id');
     }
 
     public function tender()
