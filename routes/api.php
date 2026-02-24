@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\JobController;
 use App\Http\Controllers\Api\ContractorBillController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PurchaseOrderController;
+use App\Http\Controllers\Api\AwardLetterPdfController;
 use App\Http\Controllers\Api\TaxInvoiceController;
 use App\Http\Controllers\Api\InvoicePdfController;
 use App\Http\Controllers\Api\NotificationController;
@@ -125,6 +126,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Payment actions
     Route::post('invoices/{id}/record-payment', [InvoiceController::class, 'recordPayment']);
     Route::post('invoices/{id}/mark-banked', [InvoiceController::class, 'markAsBanked']);
+    Route::post('invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
+    Route::delete('invoices/{id}/documents/{documentId}', [InvoiceController::class, 'deleteDocument']);
 
     // Standard Invoice CRUD
     Route::get('invoices', [InvoiceController::class, 'index'])
@@ -155,7 +158,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
     Route::get('/invoices/{id}/download-receipt', [InternalReceiptPdfController::class, 'download']);
-    Route::get('/purchase-orders/{id}/download-pdf', [PurchaseOrderPdfController::class, 'download']);
+    Route::get('purchase-orders/{id}/download-pdf', [PurchaseOrderController::class, 'downloadPdf']);
+    Route::get('jobs/{id}/award-letter', [AwardLetterPdfController::class, 'download']);
 
     // ── Notifications ─────────────────────────────────────────────
 

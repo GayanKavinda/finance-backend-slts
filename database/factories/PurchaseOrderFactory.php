@@ -18,6 +18,7 @@ class PurchaseOrderFactory extends Factory
     {
         return [
             'po_number' => $this->faker->unique()->bothify('PO-####-??'),
+            'po_date' => $this->faker->date(),
             'job_id' => \App\Models\ProjectJob::factory(),
             'po_description' => $this->faker->sentence(),
             'po_amount' => $this->faker->randomFloat(2, 1000, 50000),

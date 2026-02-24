@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ContractorQuotation extends Model
 {
+    use HasFactory;
     const STATUS_SUBMITTED = 'Submitted';
     const STATUS_SELECTED = 'Selected';
     const STATUS_REJECTED = 'Rejected';

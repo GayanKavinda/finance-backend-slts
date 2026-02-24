@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Invoice;
+use App\Models\InvoiceDocument;
 use App\Services\InvoiceWorkflowService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
 {
@@ -46,14 +48,7 @@ class InvoiceController extends Controller
     // Show single invoice
     public function show($id)
     {
-        return Invoice::with([
-            'purchaseOrder.tender',
-            'customer',
-            'statusHistory.user',
-            'submittedBy',
-            'approvedBy',
-            'rejectedBy'
-        ])->findOrFail($id);
+        return Invoice::with(['customer', 'purchaseOrder.tender', 'taxInvoice', 'submittedBy', 'approvedBy', 'rejectedBy', 'recordedBy', 'documents.uploader'])->findOrFail($id);
     }
 
     // Store new invoice
@@ -271,6 +266,74 @@ class InvoiceController extends Controller
             'message' => 'Invoice marked as banked. Transaction complete.',
             'invoice' => $invoice->load(['customer', 'purchaseOrder'])
         ]);
+    }
+
+    /**
+     * Upload a document to an invoice
+     */
+    public function uploadDocument(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10MB
+            'document_type' => 'required|string',
+            'description' => 'nullable|string',
+        ]);
+
+        $invoice = Invoice::findOrFail($id);
+
+        // Limit uploads to early stages or rejected
+        $allowedStatii = [
+            Invoice::STATUS_DRAFT,
+            Invoice::STATUS_TAX_GENERATED,
+            Invoice::STATUS_SUBMITTED,
+            Invoice::STATUS_REJECTED
+        ];
+
+        if (!in_array($invoice->status, $allowedStatii)) {
+            return response()->json([
+                'message' => 'Can only upload documents to draft, generated, submitted or rejected invoices'
+            ], 422);
+        }
+
+        $file = $request->file('file');
+        $path = $file->store("invoices/{$invoice->id}", 'public');
+
+        $document = InvoiceDocument::create([
+            'invoice_id' => $invoice->id,
+            'document_type' => $request->document_type,
+            'file_name' => $file->getClientOriginalName(),
+            'file_path' => $path,
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'uploaded_by' => Auth::id(),
+            'description' => $request->description,
+        ]);
+
+        return response()->json($document->load('uploader'), 201);
+    }
+
+    /**
+     * Delete an invoice document
+     */
+    public function deleteDocument($invoiceId, $documentId)
+    {
+        $document = InvoiceDocument::where('invoice_id', $invoiceId)
+            ->where('id', $documentId)
+            ->firstOrFail();
+
+        $invoice = $document->invoice;
+
+        // Allow deletion only if not yet approved to preserve audit trail
+        if (!in_array($invoice->status, [Invoice::STATUS_DRAFT, Invoice::STATUS_TAX_GENERATED, Invoice::STATUS_REJECTED])) {
+            return response()->json([
+                'message' => 'Cannot delete documents once invoice is submitted or approved'
+            ], 422);
+        }
+
+        Storage::disk('public')->delete($document->file_path);
+        $document->delete();
+
+        return response()->json(['message' => 'Document deleted']);
     }
 
     /**

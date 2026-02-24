@@ -84,6 +84,11 @@ class Invoice extends Model
         return $this->hasOne(TaxInvoice::class);
     }
 
+    public function documents()
+    {
+        return $this->hasMany(InvoiceDocument::class);
+    }
+
     public function getTotalAmountAttribute()
     {
         if (!$this->taxInvoice) {

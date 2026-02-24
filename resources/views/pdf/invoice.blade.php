@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -500,175 +501,181 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="invoice-wrapper">
-    <!-- Watermark -->
-    <div class="watermark">PAID</div>
+    <div class="invoice-wrapper">
+        <!-- Watermark -->
+        <div class="watermark">PAID</div>
 
-    <!-- Header Section -->
-    <div class="header">
-        <div class="header-content">
-            <div class="header-left">
-                <div class="company-branding">
-                    <div class="logo-row">
-                        <div class="logo-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+        <!-- Header Section -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="company-branding">
+                        <div class="logo-row">
+                            <div class="logo-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                            <div class="logo-text">
+                                <div class="company-name">{{ $company['name'] }}</div>
+                                <div class="company-tagline">Connectivity & Infrastructure Excellence</div>
+                            </div>
                         </div>
-                        <div class="logo-text">
-                            <div class="company-name">{{ $company['name'] }}</div>
-                            <div class="company-tagline">Connectivity & Infrastructure Excellence</div>
-                        </div>
+                    </div>
+                    <div class="company-address">
+                        {{ $company['address'] }}<br>
+                        <span class="label">T:</span> +94 11 232 9711<br>
+                        <span class="label">E:</span> billing@sltservices.lk
                     </div>
                 </div>
-                <div class="company-address">
-                    {{ $company['address'] }}<br>
-                    <span class="label">T:</span> +94 11 232 9711<br>
-                    <span class="label">E:</span> billing@sltservices.lk
-                </div>
-            </div>
-            <div class="header-right">
-                <div class="invoice-title">INVOICE</div>
-                <div class="official-badge">Official Electronic Document</div>
-                <div class="invoice-meta-grid">
-                    <div class="meta-row">
-                        <span class="meta-label">Invoice No:</span>
-                        <span class="meta-value">{{ $invoice->invoice_number }}</span>
-                    </div>
-                    <div class="meta-row">
-                        <span class="meta-label">Date:</span>
-                        <span class="meta-value">{{ $invoice->created_at->format('F d, Y') }}</span>
-                    </div>
-                    <div class="meta-row">
-                        <span class="meta-label">Due Date:</span>
-                        <span class="meta-value due-date">{{ $invoice->created_at->addDays(14)->format('F d, Y') }}</span>
+                <div class="header-right">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="official-badge">Official Electronic Document</div>
+                    <div class="invoice-meta-grid">
+                        <div class="meta-row">
+                            <span class="meta-label">Invoice No:</span>
+                            <span class="meta-value">{{ $invoice->invoice_number }}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Date:</span>
+                            <span class="meta-value">{{ $invoice->created_at->format('F d, Y') }}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Due Date:</span>
+                            <span class="meta-value due-date">{{ $invoice->created_at->addDays(14)->format('F d, Y') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Billing Section -->
-    <div class="billing-section">
-        <div class="billing-grid">
-            <div class="billing-col">
-                <div class="section-heading">Billed To</div>
-                <div class="billed-to-name">{{ $invoice->customer->name }}</div>
-                <div class="billed-to-details">
-                    @if($invoice->customer->department)
+        <!-- Billing Section -->
+        <div class="billing-section">
+            <div class="billing-grid">
+                <div class="invoice-header">
+                    <div class="title">TAX INVOICE / REVENUE INVOICE</div>
+                    <div class="invoice-number"># {{ $invoice->taxInvoice->tax_invoice_number ?? $invoice->invoice_number }}</div>
+                </div>
+                <div class="billing-col">
+                    <div class="section-heading">Billed To</div>
+                    <div class="billed-to-name">{{ $invoice->customer->name }}</div>
+                    <div class="billed-to-details">
+                        @if($invoice->customer->department)
                         {{ $invoice->customer->department }}<br>
-                    @endif
-                    @if($invoice->customer->address)
+                        @endif
+                        @if($invoice->customer->address)
                         {{ $invoice->customer->address }}<br>
-                    @endif
-                    @if($invoice->customer->email)
+                        @endif
+                        @if($invoice->customer->email)
                         {{ $invoice->customer->email }}<br>
-                    @endif
-                    @if($invoice->customer->vat_number)
+                        @endif
+                        @if($invoice->customer->vat_number)
                         <span class="service-label">VAT Reg:</span> {{ $invoice->customer->vat_number }}
-                    @endif
+                        @endif
+                    </div>
                 </div>
-            </div>
-            <div class="billing-col">
-                <div class="section-heading">Service Details</div>
-                <div class="service-details">
-                    @if($invoice->project_name)
+                <div class="billing-col">
+                    <div class="section-heading">Service Details</div>
+                    <div class="service-details">
+                        @if($invoice->project_name)
                         <span class="service-label">Project:</span> {{ $invoice->project_name }}<br>
-                    @endif
-                    @if($invoice->purchaseOrder)
+                        @endif
+                        @if($invoice->purchaseOrder)
                         <span class="service-label">Contract Ref:</span> {{ $invoice->purchaseOrder->contract_reference ?? 'N/A' }}<br>
-                    @endif
-                    <span class="service-label">Currency:</span> LKR (Sri Lankan Rupee)
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Items Table -->
-    <div class="items-section">
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width: 50%;">Description</th>
-                    <th class="text-center">PO Number</th>
-                    <th class="text-right">Amount (LKR)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <div class="item-name">{{ $invoice->service_description ?? 'Professional Services' }}</div>
-                        <div class="item-description">
-                            {{ $invoice->service_details ?? 'Consulting and implementation services for the current billing period.' }}
-                        </div>
-                    </td>
-                    <td class="po-number">
-                        {{ $invoice->purchaseOrder->po_number ?? 'N/A' }}
-                    </td>
-                    <td class="item-amount">
-                        {{ number_format($invoice->invoice_amount, 2) }}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Summary Section -->
-    <div class="summary-section">
-        <div class="summary-grid">
-            <div class="summary-left">
-                <div class="payment-info-box">
-                    <div class="payment-info-title">Payment Information</div>
-                    <div class="payment-info-text">
-                        Please include the invoice number ({{ $invoice->invoice_number }}) as a reference in all transfers. 
-                        Payments are accepted via RTGS or Online Banking to Bank of Ceylon, 
-                        Corporate Branch A/C 0001234567.
+                        @endif
+                        <span class="service-label">Currency:</span> LKR (Sri Lankan Rupee)
                     </div>
                 </div>
             </div>
-            <div class="summary-right">
-                <table class="totals-table">
+        </div>
+
+        <!-- Items Table -->
+        <div class="items-section">
+            <table class="items-table">
+                <thead>
                     <tr>
-                        <td class="totals-label">Subtotal</td>
-                        <td class="totals-value">{{ number_format($invoice->invoice_amount, 2) }}</td>
+                        <th style="width: 50%;">Description</th>
+                        <th class="text-center">PO Number</th>
+                        <th class="text-right">Amount (LKR)</th>
                     </tr>
+                </thead>
+                <tbody>
                     <tr>
-                        <td class="totals-label">VAT ({{ optional($invoice->taxInvoice)->tax_percentage ?? 0 }}%)</td>
-                        <td class="totals-value">{{ number_format(optional($invoice->taxInvoice)->tax_amount ?? 0, 2) }}</td>
-                    </tr>
-                    <tr class="total-row">
-                        <td class="grand-total-label">Grand Total</td>
-                        <td class="totals-value">
-                            <span class="grand-total-currency">LKR</span>
-                            <span class="grand-total-amount">{{ number_format($invoice->total_amount, 2) }}</span>
+                        <td>
+                            <div class="item-name">{{ $invoice->service_description ?? 'Professional Services' }}</div>
+                            <div class="item-description">
+                                {{ $invoice->service_details ?? 'Consulting and implementation services for the current billing period.' }}
+                            </div>
+                        </td>
+                        <td class="po-number">
+                            {{ $invoice->purchaseOrder->po_number ?? 'N/A' }}
+                        </td>
+                        <td class="item-amount">
+                            {{ number_format($invoice->invoice_amount, 2) }}
                         </td>
                     </tr>
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="footer">
-        <div class="footer-grid">
-            <div class="footer-left">
-                <div class="footer-thanks">Thank you for your continued business.</div>
-                <div class="footer-subtitle">{{ $company['name'] }} is a subsidiary of SLT-Mobitel Group.</div>
-            </div>
-            <div class="footer-right">
-                <span class="hash-code">HASH: {{ substr(md5($invoice->invoice_number), 0, 19) }}</span>
-                <div class="qr-placeholder">
-                    <div class="qr-inner">Secure<br>QR</div>
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <div class="summary-grid">
+                <div class="summary-left">
+                    <div class="payment-info-box">
+                        <div class="payment-info-title">Payment Information</div>
+                        <div class="payment-info-text">
+                            Please include the invoice number ({{ $invoice->invoice_number }}) as a reference in all transfers.
+                            Payments are accepted via RTGS or Online Banking to Bank of Ceylon,
+                            Corporate Branch A/C 0001234567.
+                        </div>
+                    </div>
+                </div>
+                <div class="summary-right">
+                    <table class="totals-table">
+                        <tr>
+                            <td class="totals-label">Subtotal</td>
+                            <td class="totals-value">{{ number_format($invoice->invoice_amount, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="totals-label">VAT ({{ optional($invoice->taxInvoice)->tax_percentage ?? 0 }}%)</td>
+                            <td class="totals-value">{{ number_format(optional($invoice->taxInvoice)->tax_amount ?? 0, 2) }}</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td class="grand-total-label">Grand Total</td>
+                            <td class="totals-value">
+                                <span class="grand-total-currency">LKR</span>
+                                <span class="grand-total-amount">{{ number_format($invoice->total_amount, 2) }}</span>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
-        <div class="footer-legal">
-            Authorized Signatory Not Required for Computer Generated Invoice
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-grid">
+                <div class="footer-left">
+                    <div class="footer-thanks">Thank you for your continued business.</div>
+                    <div class="footer-subtitle">{{ $company['name'] }} is a subsidiary of SLT-Mobitel Group.</div>
+                </div>
+                <div class="footer-right">
+                    <span class="hash-code">HASH: {{ substr(md5($invoice->invoice_number), 0, 19) }}</span>
+                    <div class="qr-placeholder">
+                        <div class="qr-inner">Secure<br>QR</div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-legal">
+                Authorized Signatory Not Required for Computer Generated Invoice
+            </div>
         </div>
     </div>
-</div>
 
 </body>
+
 </html>

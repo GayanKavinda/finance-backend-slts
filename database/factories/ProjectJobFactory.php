@@ -22,7 +22,7 @@ class ProjectJobFactory extends Factory
             'name' => $this->faker->catchPhrase(),
             'project_value' => $this->faker->randomFloat(2, 5000, 500000),
             'description' => $this->faker->paragraph(),
-            'contractor_id' => null, // Can be set via seeder or state
+            'selected_contractor_id' => null, // Can be set via seeder or state
             'status' => $this->faker->randomElement(['Pending', 'In Progress', 'Completed', 'On Hold']),
             'completed_at' => $this->faker->optional(0.3)->dateTimeBetween('-6 months', 'now'),
         ];

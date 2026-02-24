@@ -41,6 +41,8 @@ class JobController extends Controller
             'project_value' => 'nullable|numeric|min:0',
             'description'   => 'nullable|string',
             'status'        => 'nullable|in:Pending,In Progress,Completed',
+            'work_start_date'      => 'nullable|date',
+            'work_completion_date' => 'nullable|date|after_or_equal:work_start_date',
         ]);
 
         $validated['project_value'] = $validated['project_value'] ?? 0;
@@ -62,6 +64,8 @@ class JobController extends Controller
             'project_value' => 'nullable|numeric|min:0',
             'description'   => 'nullable|string',
             'status'        => 'required|string',
+            'work_start_date'      => 'nullable|date',
+            'work_completion_date' => 'nullable|date|after_or_equal:work_start_date',
         ]);
 
         $job->update($validated);

@@ -112,6 +112,12 @@ class ContractorBillController extends Controller
             ], 422);
         }
 
+        if ($bill->job->status !== \App\Models\ProjectJob::STATUS_COMPLETED) {
+            return response()->json([
+                'message' => "Job '{$bill->job->name}' must be marked as Completed before verifying contractor bills."
+            ], 422);
+        }
+
         if ($bill->documents()->count() === 0) {
             return response()->json([
                 'message' => 'At least one document (e.g., Contractor Bill) is required'
