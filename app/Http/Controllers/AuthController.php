@@ -135,14 +135,31 @@ class AuthController extends Controller
 
         $email = strtolower(trim($credentials['email']));
         Log::info("[AuthController] Login attempt for email: $email");
-        $user = User::where('email', $email)->first();
+        
+        // Search including soft-deleted users to support auto-reactivation
+        $user = User::withTrashed()->where('email', $email)->first();
 
-        if ($user && $user->lockout_until && $user->lockout_until->isFuture()) {
+        if (!$user) {
+            Log::warning("[AuthController] Login failed: User not found for email $email");
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        if ($user->lockout_until && $user->lockout_until->isFuture()) {
             $diff = $user->lockout_until->diffInMinutes(now());
             Log::warning("[AuthController] Login blocked: Account locked for $email for another $diff mins");
             return response()->json([
                 'message' => "Account locked. Try again in $diff minutes."
             ], 423);
+        }
+
+        // If user is deactivated (trashed), check password before restoring
+        if ($user->trashed()) {
+            if (Hash::check($credentials['password'], $user->password)) {
+                Log::info("[AuthController] Auto-reactivating user: $email (ID: {$user->id})");
+                $user->restore();
+            } else {
+                // Regular failed attempt logic will handle counter
+            }
         }
 
         if (Auth::attempt(['email' => $email, 'password' => $credentials['password']])) {

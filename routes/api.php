@@ -77,6 +77,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/request-email-change', [ProfileController::class, 'requestEmailChange']);
     Route::post('/confirm-email-change', [ProfileController::class, 'confirmEmailChange']);
     Route::post('/deactivate-account',   [ProfileController::class, 'deactivateAccount']);
+    Route::delete('/permanent-delete-account', [ProfileController::class, 'permanentDeleteAccount']);
 
     // ── Security ──────────────────────────────────────────────────
 
@@ -178,6 +179,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/users/{id}/assign-role',  [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
             Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
             Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
+            Route::delete('/users/{id}/permanent',   [\App\Http\Controllers\Api\UserManagementController::class, 'permanentDelete']);
         });
 
         // Role & Permission Management

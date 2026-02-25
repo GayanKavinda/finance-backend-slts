@@ -131,4 +131,26 @@ class UserManagementController extends Controller
             'user'    => $user->fresh()->load('roles:id,name'),
         ]);
     }
+
+    /**
+     * Permanently delete a user from the database.
+     */
+    public function permanentDelete($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+
+        if ($user->id === auth()->id()) {
+            abort(422, 'You cannot permanently delete your own account from here.');
+        }
+
+        // Revoke all tokens
+        $user->tokens()->delete();
+
+        // Permanent delete
+        $user->forceDelete();
+
+        return response()->json([
+            'message' => "{$user->name} has been permanently deleted.",
+        ]);
+    }
 }

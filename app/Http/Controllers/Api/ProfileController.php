@@ -208,4 +208,21 @@ class ProfileController extends Controller
         Log::info("[ProfileController] Account deactivated successfully");
         return response()->json(['message' => 'Account deactivated. You can contact support to restore within 30 days.']);
     }
+    public function permanentDeleteAccount(Request $request)
+    {
+        $user = $request->user();
+        Log::warning("[ProfileController] User PERMANENTLY deleting account. User ID: {$user->id}, Email: {$user->email}");
+
+        // Revoke tokens
+        $user->tokens()->delete();
+
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $user->forceDelete();
+
+        Log::info("[ProfileController] Account PERMANENTLY deleted successfully");
+        return response()->json(['message' => 'Your account has been permanently removed.']);
+    }
 }
