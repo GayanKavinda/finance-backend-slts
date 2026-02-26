@@ -34,6 +34,8 @@ class ContractorBill extends Model
         'rejected_at',
         'rejection_reason',
         'payment_reference',
+        'bank_name',
+        'payment_amount',
         'notes',
     ];
 

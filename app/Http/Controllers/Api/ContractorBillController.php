@@ -232,12 +232,16 @@ class ContractorBillController extends Controller
 
         $request->validate([
             'payment_reference' => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',
+            'payment_amount' => 'required|numeric|min:0',
             'paid_at' => 'required|date',
         ]);
 
         $bill->update([
             'status' => ContractorBill::STATUS_PAID,
             'payment_reference' => $request->payment_reference,
+            'bank_name' => $request->bank_name,
+            'payment_amount' => $request->payment_amount,
             'paid_at' => $request->paid_at,
         ]);
 

@@ -45,6 +45,7 @@ class TenderController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'status' => 'nullable|in:Open,In Progress,Closed',
+            'notes' => 'nullable|string',
         ]);
 
         $data['awarded_amount'] = $data['awarded_amount'] ?? 0;
@@ -80,6 +81,7 @@ class TenderController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'status' => 'nullable|in:Open,In Progress,Closed',
+            'notes' => 'nullable|string',
         ]);
 
         $tender->update($data);

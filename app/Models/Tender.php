@@ -23,6 +23,7 @@ class Tender extends Model
         'start_date',
         'end_date',
         'status',
+        'notes',
     ];
 
     public function customer()
