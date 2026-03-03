@@ -159,7 +159,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
     Route::get('/invoices/{id}/download-receipt', [InternalReceiptPdfController::class, 'download']);
-    Route::get('purchase-orders/{id}/download-pdf', [PurchaseOrderController::class, 'downloadPdf']);
+    Route::get('purchase-orders/{id}/download-pdf', [PurchaseOrderPdfController::class, 'download']);
     Route::get('jobs/{id}/award-letter', [AwardLetterPdfController::class, 'download']);
 
     // ── Notifications ─────────────────────────────────────────────

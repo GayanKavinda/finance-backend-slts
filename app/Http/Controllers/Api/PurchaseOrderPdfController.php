@@ -14,6 +14,8 @@ class PurchaseOrderPdfController extends Controller
 
         $pdf = Pdf::loadView('pdf.purchase-order', compact('po'));
 
-        return $pdf->download("PO-{$po->po_number}.pdf");
+        $safePoNumber = str_replace(['/', '\\'], '-', $po->po_number);
+
+        return $pdf->download("PO-{$safePoNumber}.pdf");
     }
 }
