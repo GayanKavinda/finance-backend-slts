@@ -58,7 +58,7 @@ class InvoiceStatusChanged extends Notification
 
         return $mail
             ->action('View Invoice', url("/invoices/{$this->invoice->id}"))
-            ->line('Log in to FinancePro to take action.');
+            ->line('Log in to SLT ProcureX to take action.');
     }
 
     /**

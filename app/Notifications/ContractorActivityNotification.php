@@ -59,7 +59,7 @@ class ContractorActivityNotification extends Notification
             ->subject($subject)
             ->line($this->message)
             ->action('View Details', url($this->type === 'quotation' ? "/jobs/{$this->entity->job_id}" : "/contractor-bills"))
-            ->line('Thank you for using FinancePro.');
+            ->line('Thank you for using SLT ProcureX.');
     }
 
     /**

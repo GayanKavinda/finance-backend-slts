@@ -131,11 +131,14 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+            'remember' => 'nullable|boolean',
         ]);
+
+        $remember = $request->boolean('remember');
 
         $email = strtolower(trim($credentials['email']));
         Log::info("[AuthController] Login attempt for email: $email");
-        
+
         // Search including soft-deleted users to support auto-reactivation
         $user = User::withTrashed()->where('email', $email)->first();
 
@@ -162,7 +165,7 @@ class AuthController extends Controller
             }
         }
 
-        if (Auth::attempt(['email' => $email, 'password' => $credentials['password']])) {
+        if (Auth::attempt(['email' => $email, 'password' => $credentials['password']], $remember)) {
             $request->session()->regenerate();
 
             /** @var \App\Models\User $user */

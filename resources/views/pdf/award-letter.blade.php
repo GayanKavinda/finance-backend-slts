@@ -69,9 +69,9 @@
 
 <body>
     <div class="header">
-        <div class="logo">FINANCEPRO CORP (PVT) LTD</div>
+        <div class="logo">SLT PROCUREX (PVT) LTD</div>
         <div>No. 123, Business Plaza, Colombo 03, Sri Lanka</div>
-        <div>Tel: +94 11 2345678 | Email: procurement@financepro.lk</div>
+        <div>Tel: +94 11 2345678 | Email: procurement@procurex.slt.lk</div>
     </div>
 
     <div class="date">Date: {{ date('d M Y') }}</div>
@@ -119,7 +119,7 @@
     <div class="signature-area">
         <div class="signature-box">
             <p>..........................................</p>
-            <p><strong>Authorized Signature</strong><br>FinancePro Corp</p>
+            <p><strong>Authorized Signature</strong><br>SLT ProcureX</p>
         </div>
         <div class="signature-box" style="text-align: right;">
             <p>..........................................</p>
