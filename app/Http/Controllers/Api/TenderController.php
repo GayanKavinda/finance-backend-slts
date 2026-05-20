@@ -6,9 +6,16 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Tender;
 use App\Models\Customer;
+use App\Services\Domains\ProcurementDomainService;
 
 class TenderController extends Controller
 {
+    protected $procurement;
+
+    public function __construct(ProcurementDomainService $procurement)
+    {
+        $this->procurement = $procurement;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -52,9 +59,9 @@ class TenderController extends Controller
         $data['budget'] = $data['budget'] ?? 0;
         $data['status'] = $data['status'] ?? Tender::STATUS_OPEN;
 
-        $tender = Tender::create($data);
+        $tender = $this->procurement->createTender($data);
 
-        return response()->json($tender->load('customer'), 201);
+        return response()->json($tender, 201);
     }
 
     /**
@@ -87,6 +94,34 @@ class TenderController extends Controller
         $tender->update($data);
 
         return response()->json($tender->load('customer'));
+    }
+
+    /**
+     * Award the tender to a contractor.
+     */
+    public function award(Request $request, $id)
+    {
+        $tender = Tender::findOrFail($id);
+        $validated = $request->validate([
+            'awarded_amount' => 'required|numeric|min:0',
+            'award_date' => 'required|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        try {
+            $this->procurement->awardTender($tender, [
+                'amount' => $validated['awarded_amount'],
+                'date' => $validated['award_date'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'Tender successfully awarded.',
+                'tender' => $tender->load('customer')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Awarding failed: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

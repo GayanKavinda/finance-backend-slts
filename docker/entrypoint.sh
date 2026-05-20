@@ -5,6 +5,15 @@ set -e
 
 echo "Starting Backend Tasks..."
 
+# Create runtime directory for Nginx if it doesn't exist
+mkdir -p /run/nginx
+
+# Ensure storage subdirectories exist and are writeable
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 # Clear and Cache configuration
 php artisan config:cache
 php artisan route:cache

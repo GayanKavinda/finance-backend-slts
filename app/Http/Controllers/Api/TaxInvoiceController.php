@@ -8,8 +8,18 @@ use App\Models\TaxInvoice;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\DB;
 
+use App\Services\InvoiceWorkflowService;
+use Illuminate\Support\Facades\Auth;
+
 class TaxInvoiceController extends Controller
 {
+    protected $workflow;
+
+    public function __construct(InvoiceWorkflowService $workflow)
+    {
+        $this->workflow = $workflow;
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -40,9 +50,12 @@ class TaxInvoiceController extends Controller
                 'locked' => true,
             ]);
 
-            $invoice->update([
-                'status' => Invoice::STATUS_TAX_GENERATED,
-            ]);
+            $this->workflow->transitionTo(
+                $invoice,
+                Invoice::STATUS_TAX_GENERATED,
+                Auth::user(),
+                "Tax Invoice #{$taxInvoice->tax_invoice_number} generated"
+            );
 
             return $taxInvoice;
         });

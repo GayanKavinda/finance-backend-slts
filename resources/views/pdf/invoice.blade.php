@@ -506,7 +506,7 @@
 
     <div class="invoice-wrapper">
         <!-- Watermark -->
-        <div class="watermark">PAID</div>
+        <div class="watermark">{{ $invoice->status === 'Banked' ? 'BANKED' : 'OFFICIAL' }}</div>
 
         <!-- Header Section -->
         <div class="header">
@@ -563,11 +563,15 @@
                     <div class="section-heading">Billed To</div>
                     <div class="billed-to-name">{{ $invoice->customer->name }}</div>
                     <div class="billed-to-details">
-                        @if($invoice->customer->department)
-                        {{ $invoice->customer->department }}<br>
-                        @endif
-                        @if($invoice->customer->address)
-                        {{ $invoice->customer->address }}<br>
+                        @if($invoice->billing_address)
+                        {!! nl2br(e($invoice->billing_address)) !!}<br>
+                        @else
+                            @if($invoice->customer->department)
+                            {{ $invoice->customer->department }}<br>
+                            @endif
+                            @if($invoice->customer->address)
+                            {{ $invoice->customer->address }}<br>
+                            @endif
                         @endif
                         @if($invoice->customer->email)
                         {{ $invoice->customer->email }}<br>
@@ -607,11 +611,11 @@
                         <td>
                             <div class="item-name">{{ $invoice->service_description ?? 'Professional Services' }}</div>
                             <div class="item-description">
-                                {{ $invoice->service_details ?? 'Consulting and implementation services for the current billing period.' }}
+                                {{ $invoice->customer_po_description ?? $invoice->service_details ?? 'Consulting and implementation services for the current billing period.' }}
                             </div>
                         </td>
                         <td class="po-number">
-                            {{ $invoice->purchaseOrder->po_number ?? 'N/A' }}
+                            {{ $invoice->customer_po_number ?? $invoice->purchaseOrder->po_number ?? 'N/A' }}
                         </td>
                         <td class="item-amount">
                             {{ number_format($invoice->invoice_amount, 2) }}

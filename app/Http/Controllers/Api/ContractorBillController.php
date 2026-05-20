@@ -237,16 +237,18 @@ class ContractorBillController extends Controller
             'paid_at' => 'required|date',
         ]);
 
-        $bill->update([
-            'status' => ContractorBill::STATUS_PAID,
-            'payment_reference' => $request->payment_reference,
-            'bank_name' => $request->bank_name,
-            'payment_amount' => $request->payment_amount,
-            'paid_at' => $request->paid_at,
-        ]);
+        return DB::transaction(function () use ($bill, $request) {
+            $bill->update([
+                'status' => ContractorBill::STATUS_PAID,
+                'payment_reference' => $request->payment_reference,
+                'bank_name' => $request->bank_name,
+                'payment_amount' => $request->payment_amount,
+                'paid_at' => $request->paid_at,
+            ]);
 
-        $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_PAID, $request->user());
+            $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_PAID, $request->user());
 
-        return response()->json($bill->load(['job', 'contractor', 'documents']));
+            return response()->json($bill->load(['job', 'contractor', 'documents']));
+        });
     }
 }

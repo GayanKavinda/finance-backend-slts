@@ -36,6 +36,9 @@ class Invoice extends Model
         'invoice_number',
         'invoice_amount',
         'invoice_date',
+        'billing_address',
+        'customer_po_number',
+        'customer_po_description',
         'status',
         'payment_reference',
         'payment_method',
@@ -132,7 +135,7 @@ class Invoice extends Model
             self::STATUS_DRAFT => [self::STATUS_TAX_GENERATED],
             self::STATUS_TAX_GENERATED => [self::STATUS_SUBMITTED],
             self::STATUS_SUBMITTED => [self::STATUS_APPROVED, self::STATUS_REJECTED],
-            self::STATUS_APPROVED => [self::STATUS_PAYMENT_RECEIVED, self::STATUS_REJECTED],
+            self::STATUS_APPROVED => [self::STATUS_PAYMENT_RECEIVED, self::STATUS_BANKED, self::STATUS_REJECTED],
             self::STATUS_PAYMENT_RECEIVED => [self::STATUS_BANKED],
             self::STATUS_REJECTED => [self::STATUS_DRAFT],
         ];

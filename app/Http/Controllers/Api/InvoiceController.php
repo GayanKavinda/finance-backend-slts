@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\InvoiceDocument;
 use App\Services\InvoiceWorkflowService;
+use App\Services\Domains\BillingDomainService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,10 +15,12 @@ use Illuminate\Support\Facades\Storage;
 class InvoiceController extends Controller
 {
     protected $workflow;
+    protected $billing;
 
-    public function __construct(InvoiceWorkflowService $workflow)
+    public function __construct(InvoiceWorkflowService $workflow, BillingDomainService $billing)
     {
         $this->workflow = $workflow;
+        $this->billing = $billing;
     }
 
     // List invoices with filters
@@ -60,6 +63,9 @@ class InvoiceController extends Controller
             'invoice_number' => 'required|string|unique:invoices,invoice_number',
             'invoice_amount' => 'nullable|numeric|min:0',
             'invoice_date' => 'required|date',
+            'billing_address' => 'nullable|string',
+            'customer_po_number' => 'nullable|string|max:255',
+            'customer_po_description' => 'nullable|string',
         ]);
 
         $validated['invoice_amount'] = $validated['invoice_amount'] ?? 0;
@@ -86,6 +92,9 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'invoice_amount' => 'nullable|numeric|min:0',
             'invoice_date' => 'required|date',
+            'billing_address' => 'nullable|string',
+            'customer_po_number' => 'nullable|string|max:255',
+            'customer_po_description' => 'nullable|string',
         ]);
 
         $invoice->update($validated);
@@ -168,7 +177,8 @@ class InvoiceController extends Controller
             'paid_count' => Invoice::where('status', Invoice::STATUS_BANKED)->count(),
             'rejected_count' => Invoice::where('status', Invoice::STATUS_REJECTED)->count(),
             'gross_amount' => Invoice::sum('invoice_amount'),
-            'banked_amount' => Invoice::where('status', Invoice::STATUS_BANKED)->sum('payment_amount'),
+            'banked_amount' => Invoice::where('status', Invoice::STATUS_BANKED)
+                ->sum(DB::raw('COALESCE(payment_amount, invoice_amount)')),
             'pending_amount' => Invoice::whereNotIn('status', [Invoice::STATUS_BANKED, Invoice::STATUS_REJECTED])->sum('invoice_amount'),
             'total_contractor_costs' => $totalContractorCosts,
             'pending_contractor_payments' => $pendingContractorPayments,
@@ -177,6 +187,68 @@ class InvoiceController extends Controller
                 ->whereNotNull('approved_at')
                 ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, approved_at)) as avg_hours')
                 ->value('avg_hours') ?? 0,
+        ]);
+    }
+
+    /**
+     * Approval Velocity for the last 7 days
+     */
+    public function approvalVelocity()
+    {
+        $stats = Invoice::whereNotNull('submitted_at')
+            ->whereNotNull('approved_at')
+            ->where('approved_at', '>=', now()->subDays(7))
+            ->selectRaw("
+                DATE_FORMAT(approved_at, '%a') as day,
+                AVG(TIMESTAMPDIFF(HOUR, submitted_at, approved_at)) as hours
+            ")
+            ->groupByRaw("DATE_FORMAT(approved_at, '%a'), DAYOFWEEK(approved_at)")
+            ->get()
+            ->keyBy('day');
+
+        $result = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $dayName = $date->format('D');
+            $result[] = [
+                'day' => $dayName,
+                'hours' => isset($stats[$dayName]) ? round($stats[$dayName]->hours, 1) : 0
+            ];
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * Real performance metrics for radar chart
+     */
+    public function performanceMetrics()
+    {
+        $totalInvoices = Invoice::count() ?: 1;
+        $approvedInvoices = Invoice::where('status', Invoice::STATUS_APPROVED)->count();
+        $rejectedInvoices = Invoice::where('status', Invoice::STATUS_REJECTED)->count();
+        $bankedAmount = Invoice::where('status', Invoice::STATUS_BANKED)
+            ->sum(DB::raw('COALESCE(payment_amount, invoice_amount)'));
+        $grossAmount = Invoice::sum('invoice_amount') ?: 1;
+        
+        $avgApprovalHours = Invoice::whereNotNull('submitted_at')
+            ->whereNotNull('approved_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, approved_at)) as avg_hours')
+            ->value('avg_hours') ?? 0;
+
+        $taxGeneratedCount = Invoice::whereHas('taxInvoice')->count();
+
+        $totalBudget = \App\Models\Tender::sum('budget') ?: 1;
+        $estimatedProfit = \App\Models\ProjectJob::whereNotNull('selected_contractor_id')
+            ->sum(DB::raw('project_value - contractor_quote_amount')) ?: 0;
+
+        return response()->json([
+            [ 'metric' => 'Collection', 'current' => round(($bankedAmount / $grossAmount) * 100), 'target' => 90 ],
+            [ 'metric' => 'Approval', 'current' => round(($approvedInvoices / $totalInvoices) * 100), 'target' => 80 ],
+            [ 'metric' => 'Efficiency', 'current' => $avgApprovalHours > 0 ? min(100, round((24 / $avgApprovalHours) * 100)) : 100, 'target' => 75 ],
+            [ 'metric' => 'Accuracy', 'current' => round((1 - ($rejectedInvoices / $totalInvoices)) * 100), 'target' => 95 ],
+            [ 'metric' => 'Compliance', 'current' => round(($taxGeneratedCount / $totalInvoices) * 100), 'target' => 85 ],
+            [ 'metric' => 'Profitability', 'current' => round(($estimatedProfit / $totalBudget) * 100), 'target' => 70 ],
         ]);
     }
 
@@ -200,35 +272,17 @@ class InvoiceController extends Controller
             'payment_received_date' => 'required|date',
         ]);
 
-        // Generate receipt number: RCP-YYYY-XXXX
-        $receiptNumber = 'RCP-' . date('Y') . '-' . str_pad(
-            Invoice::where('receipt_number', 'like', 'RCP-' . date('Y') . '-%')->count() + 1,
-            4,
-            '0',
-            STR_PAD_LEFT
-        );
+        try {
+            $this->billing->recordPayment($invoice, $validated);
 
-        $invoice->update([
-            'cheque_number' => $validated['cheque_number'],
-            'bank_name' => $validated['bank_name'],
-            'payment_amount' => $validated['payment_amount'],
-            'payment_received_date' => $validated['payment_received_date'],
-            'receipt_number' => $receiptNumber,
-            'recorded_by' => Auth::id(),
-        ]);
-
-        $this->workflow->transitionTo(
-            $invoice,
-            Invoice::STATUS_PAYMENT_RECEIVED,
-            Auth::user(),
-            "Payment received: Cheque {$validated['cheque_number']} from {$validated['bank_name']}"
-        );
-
-        return response()->json([
-            'message' => 'Payment recorded. Internal receipt generated.',
-            'receipt_number' => $invoice->receipt_number,
-            'invoice' => $invoice->load(['customer', 'purchaseOrder'])
-        ]);
+            return response()->json([
+                'message' => 'Payment recorded. Internal receipt generated.',
+                'receipt_number' => $invoice->receipt_number,
+                'invoice' => $invoice->load(['customer', 'purchaseOrder'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Payment failed: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -238,9 +292,9 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
 
-        if ($invoice->status !== Invoice::STATUS_PAYMENT_RECEIVED) {
+        if (!in_array($invoice->status, [Invoice::STATUS_PAYMENT_RECEIVED, Invoice::STATUS_APPROVED])) {
             return response()->json([
-                'message' => 'Only payment-received invoices can be marked as banked'
+                'message' => 'Invoice must be Approved or Payment Received to be marked as banked'
             ], 422);
         }
 
@@ -249,23 +303,16 @@ class InvoiceController extends Controller
             'bank_reference' => 'nullable|string|max:100',
         ]);
 
-        $invoice->update([
-            'is_banked' => true,
-            'banked_at' => $validated['banked_at'],
-            'bank_reference' => $validated['bank_reference'] ?? null,
-        ]);
+        try {
+            $this->billing->finalizeBanking($invoice, $validated);
 
-        $this->workflow->transitionTo(
-            $invoice,
-            Invoice::STATUS_BANKED,
-            Auth::user(),
-            "Marked as banked on {$validated['banked_at']}"
-        );
-
-        return response()->json([
-            'message' => 'Invoice marked as banked. Transaction complete.',
-            'invoice' => $invoice->load(['customer', 'purchaseOrder'])
-        ]);
+            return response()->json([
+                'message' => 'Invoice marked as banked. Transaction complete.',
+                'invoice' => $invoice->load(['customer', 'purchaseOrder'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Banking failed: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

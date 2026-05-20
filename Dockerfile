@@ -31,6 +31,8 @@ RUN apk add --no-cache \
     nginx \
     postgresql-libs \
     libpng \
+    libjpeg-turbo \
+    freetype \
     libxml2 \
     && docker-php-ext-install pdo_pgsql pdo_mysql bcmath gd xml
 

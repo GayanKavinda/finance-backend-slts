@@ -44,7 +44,8 @@ class InvoiceStatusChanged extends Notification
             'submitted' => "Invoice {$this->invoice->invoice_number} Awaiting Approval",
             'approved' => "Invoice {$this->invoice->invoice_number} Approved",
             'rejected' => "Invoice {$this->invoice->invoice_number} Rejected",
-            'paid' => "Invoice {$this->invoice->invoice_number} Payment Recorded",
+            'payment received' => "Invoice {$this->invoice->invoice_number} Payment Recorded",
+            'banked' => "Invoice {$this->invoice->invoice_number} Cleared & Banked",
             default => "Invoice Update: {$this->invoice->invoice_number}",
         };
 

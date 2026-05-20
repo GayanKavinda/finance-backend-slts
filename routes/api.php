@@ -124,6 +124,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('invoices/monthly-trend', [InvoiceController::class, 'monthlyTrend'])
         ->middleware('can:view-invoice');
 
+    Route::get('invoices/approval-velocity', [InvoiceController::class, 'approvalVelocity'])
+        ->middleware('can:view-invoice');
+
+    Route::get('invoices/performance-metrics', [InvoiceController::class, 'performanceMetrics'])
+        ->middleware('can:view-invoice');
+
     // Payment actions
     Route::post('invoices/{id}/record-payment', [InvoiceController::class, 'recordPayment']);
     Route::post('invoices/{id}/mark-banked', [InvoiceController::class, 'markAsBanked']);
@@ -161,6 +167,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/invoices/{id}/download-receipt', [InternalReceiptPdfController::class, 'download']);
     Route::get('purchase-orders/{id}/download-pdf', [PurchaseOrderPdfController::class, 'download']);
     Route::get('jobs/{id}/award-letter', [AwardLetterPdfController::class, 'download']);
+    Route::get('tenders/{id}/award-customer', [\App\Http\Controllers\Api\TenderAwardPdfController::class, 'download']);
 
     // ── Notifications ─────────────────────────────────────────────
 
