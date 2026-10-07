@@ -12,21 +12,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (!Schema::hasColumn('customers', 'deleted_at')) {
+            Schema::table('customers', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
 
-        Schema::table('contractors', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (!Schema::hasColumn('contractors', 'deleted_at')) {
+            Schema::table('contractors', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
 
-        Schema::table('tenders', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (!Schema::hasColumn('tenders', 'deleted_at')) {
+            Schema::table('tenders', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
 
-        Schema::table('project_jobs', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (!Schema::hasColumn('project_jobs', 'deleted_at')) {
+            Schema::table('project_jobs', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
     }
 
     /**

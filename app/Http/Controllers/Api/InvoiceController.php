@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceDocument;
 use App\Services\InvoiceWorkflowService;
 use App\Services\Domains\BillingDomainService;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,8 @@ class InvoiceController extends Controller
             'purchaseOrder.tender',
             'customer',
             'submittedBy',
-            'approvedBy'
+            'approvedBy',
+            'payments'
         ]);
 
         if ($request->status) {
@@ -51,7 +53,7 @@ class InvoiceController extends Controller
     // Show single invoice
     public function show($id)
     {
-        return Invoice::with(['customer', 'purchaseOrder.tender', 'taxInvoice', 'submittedBy', 'approvedBy', 'rejectedBy', 'recordedBy', 'documents.uploader'])->findOrFail($id);
+        return Invoice::with(['customer', 'purchaseOrder.tender', 'taxInvoice', 'submittedBy', 'approvedBy', 'rejectedBy', 'recordedBy', 'documents.uploader', 'payments.recorder'])->findOrFail($id);
     }
 
     // Store new invoice
@@ -77,6 +79,8 @@ class InvoiceController extends Controller
             'submitted_at' => now(),
         ]);
 
+        AuditLogger::log("Created Invoice: {$invoice->invoice_number}", 'Invoice', $invoice->id);
+
         return response()->json($invoice, 201);
     }
 
@@ -99,6 +103,8 @@ class InvoiceController extends Controller
 
         $invoice->update($validated);
 
+        AuditLogger::log("Updated Invoice: {$invoice->invoice_number}", 'Invoice', $invoice->id);
+
         return response()->json($invoice);
     }
 
@@ -107,6 +113,7 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $this->workflow->transitionTo($invoice, Invoice::STATUS_SUBMITTED, Auth::user());
+        AuditLogger::log("Submitted Invoice to Finance: {$invoice->invoice_number}", 'Invoice', $invoice->id);
         return response()->json(['message' => 'Invoice submitted to finance']);
     }
 
@@ -115,6 +122,7 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $this->workflow->transitionTo($invoice, Invoice::STATUS_APPROVED, Auth::user());
+        AuditLogger::log("Approved Invoice: {$invoice->invoice_number}", 'Invoice', $invoice->id);
         return response()->json(['message' => 'Invoice approved']);
     }
 
@@ -124,6 +132,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::findOrFail($id);
         $request->validate(['reason' => 'required|string']);
         $this->workflow->transitionTo($invoice, Invoice::STATUS_REJECTED, Auth::user(), $request->reason);
+        AuditLogger::log("Rejected Invoice: {$invoice->invoice_number}", 'Invoice', $invoice->id);
         return response()->json(['message' => 'Invoice rejected']);
     }
 
@@ -259,26 +268,33 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
 
-        if ($invoice->status !== Invoice::STATUS_APPROVED) {
+        if (!in_array($invoice->status, [Invoice::STATUS_APPROVED, Invoice::STATUS_PAYMENT_RECEIVED])) {
             return response()->json([
-                'message' => 'Only approved invoices can receive payment'
+                'message' => 'Invoice must be Approved or Payment Received to record payments'
             ], 422);
         }
 
         $validated = $request->validate([
-            'cheque_number' => 'required|string|max:50',
-            'bank_name' => 'required|string|max:100',
-            'payment_amount' => 'required|numeric|min:0',
+            'cheque_number' => 'nullable|string|max:50',
+            'bank_name' => 'nullable|string|max:100',
+            'payment_method' => 'nullable|string|max:50',
+            'payment_amount' => 'required|numeric|min:0.01',
+            'retention_amount' => 'nullable|numeric|min:0',
+            'milestone_name' => 'nullable|string|max:150',
             'payment_received_date' => 'required|date',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         try {
-            $this->billing->recordPayment($invoice, $validated);
+            $payment = $this->billing->recordPayment($invoice, $validated);
+
+            AuditLogger::log("Recorded Payment for Invoice: {$invoice->invoice_number} (Amount: {$validated['payment_amount']})", 'Invoice', $invoice->id);
 
             return response()->json([
-                'message' => 'Payment recorded. Internal receipt generated.',
+                'message' => 'Payment installment recorded successfully.',
+                'payment' => $payment,
                 'receipt_number' => $invoice->receipt_number,
-                'invoice' => $invoice->load(['customer', 'purchaseOrder'])
+                'invoice' => $invoice->fresh()->load(['customer', 'purchaseOrder', 'payments'])
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Payment failed: ' . $e->getMessage()], 500);
@@ -305,6 +321,8 @@ class InvoiceController extends Controller
 
         try {
             $this->billing->finalizeBanking($invoice, $validated);
+
+            AuditLogger::log("Marked Invoice as Banked: {$invoice->invoice_number}", 'Invoice', $invoice->id);
 
             return response()->json([
                 'message' => 'Invoice marked as banked. Transaction complete.',

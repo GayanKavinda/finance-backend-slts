@@ -12,14 +12,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('contractor_bills', function (Blueprint $table) {
-            // Nullable: a bill may not always have an associated PO
-            $table->foreignId('po_id')
-                  ->nullable()
-                  ->after('contractor_id')
-                  ->constrained('purchase_orders')
-                  ->nullOnDelete();
-        });
+        if (!Schema::hasColumn('contractor_bills', 'po_id')) {
+            Schema::table('contractor_bills', function (Blueprint $table) {
+                // Nullable: a bill may not always have an associated PO
+                $table->foreignId('po_id')
+                      ->nullable()
+                      ->after('contractor_id')
+                      ->constrained('purchase_orders')
+                      ->nullOnDelete();
+            });
+        }
     }
 
     /**

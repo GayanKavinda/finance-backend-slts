@@ -9,6 +9,7 @@ use App\Models\ContractorBillDocument;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Services\ContractorNotificationService;
+use App\Services\AuditLogger;
 
 class ContractorBillController extends Controller
 {
@@ -24,7 +25,7 @@ class ContractorBillController extends Controller
      */
     public function index()
     {
-        return ContractorBill::with(['job', 'contractor', 'documents'])->latest()->get();
+        return ContractorBill::with(['job', 'contractor', 'documents', 'payments'])->latest()->get();
     }
 
     /**
@@ -180,6 +181,7 @@ class ContractorBillController extends Controller
         ]);
 
         $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_APPROVED, $request->user());
+        AuditLogger::log("Approved Contractor Bill #{$bill->id}", 'ContractorBill', $bill->id);
 
         return response()->json($bill->load(['job', 'contractor', 'approver', 'documents']));
     }
@@ -214,6 +216,7 @@ class ContractorBillController extends Controller
         ]);
 
         $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_REJECTED, $request->user());
+        AuditLogger::log("Rejected Contractor Bill #{$bill->id}: {$request->reason}", 'ContractorBill', $bill->id);
 
         return response()->json($bill->load(['job', 'contractor', 'rejecter', 'documents']));
     }
@@ -225,31 +228,63 @@ class ContractorBillController extends Controller
     {
         $bill = ContractorBill::findOrFail($id);
 
-        if ($bill->status !== ContractorBill::STATUS_APPROVED) {
+        if (!in_array($bill->status, [ContractorBill::STATUS_APPROVED, ContractorBill::STATUS_PAID])) {
             return response()->json([
-                'message' => 'Bill must be approved before payment'
+                'message' => 'Bill must be approved before recording payments'
             ], 422);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'payment_reference' => 'required|string|max:255',
             'bank_name' => 'required|string|max:255',
-            'payment_amount' => 'required|numeric|min:0',
+            'payment_amount' => 'required|numeric|min:0.01',
+            'retention_amount' => 'nullable|numeric|min:0',
+            'milestone_name' => 'nullable|string|max:150',
             'paid_at' => 'required|date',
+            'notes' => 'nullable|string|max:500',
         ]);
 
-        return DB::transaction(function () use ($bill, $request) {
-            $bill->update([
-                'status' => ContractorBill::STATUS_PAID,
-                'payment_reference' => $request->payment_reference,
-                'bank_name' => $request->bank_name,
-                'payment_amount' => $request->payment_amount,
-                'paid_at' => $request->paid_at,
+        return DB::transaction(function () use ($bill, $validated, $request) {
+            $paymentAmount = (float) $validated['payment_amount'];
+            $retentionAmount = (float) ($validated['retention_amount'] ?? 0);
+
+            // Record installment
+            $payment = \App\Models\ContractorBillPayment::create([
+                'contractor_bill_id' => $bill->id,
+                'amount' => $paymentAmount,
+                'retention_amount' => $retentionAmount,
+                'milestone_name' => $validated['milestone_name'] ?? 'Payment Installment',
+                'payment_reference' => $validated['payment_reference'],
+                'bank_name' => $validated['bank_name'],
+                'payment_date' => $validated['paid_at'],
+                'notes' => $validated['notes'] ?? null,
+                'recorded_by' => $request->user()->id,
             ]);
 
-            $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_PAID, $request->user());
+            $totalPaidSoFar = (float) $bill->payments()->sum('amount');
+            $totalRetentionSoFar = (float) $bill->payments()->sum('retention_amount');
+            $isFullySettled = ($totalPaidSoFar + $totalRetentionSoFar) >= (float) $bill->amount;
 
-            return response()->json($bill->load(['job', 'contractor', 'documents']));
+            $bill->update([
+                'status' => $isFullySettled ? ContractorBill::STATUS_PAID : ContractorBill::STATUS_APPROVED,
+                'payment_reference' => $validated['payment_reference'],
+                'bank_name' => $validated['bank_name'],
+                'payment_amount' => $totalPaidSoFar,
+                'paid_at' => $validated['paid_at'],
+            ]);
+
+            if ($isFullySettled) {
+                $this->notifications->notifyBillStatusChanged($bill, ContractorBill::STATUS_PAID, $request->user());
+                AuditLogger::log("Fully Paid Contractor Bill #{$bill->id}", 'ContractorBill', $bill->id);
+            } else {
+                AuditLogger::log("Partial Payment on Contractor Bill #{$bill->id} (Amount: {$paymentAmount})", 'ContractorBill', $bill->id);
+            }
+
+            return response()->json([
+                'message' => 'Payment installment recorded successfully',
+                'payment' => $payment,
+                'bill' => $bill->fresh()->load(['job', 'contractor', 'documents', 'payments']),
+            ]);
         });
     }
 }

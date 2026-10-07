@@ -51,6 +51,9 @@ class RolePermissionSeeder extends Seeder
             'submit-contractor-bill',
             'approve-contractor-payment',
             'mark-contractor-paid',
+
+            // Super Admin only
+            'manage-system',
         ];
 
         foreach ($permissions as $permission) {
@@ -58,13 +61,19 @@ class RolePermissionSeeder extends Seeder
         }
 
         //Roles
-        $admin = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
-        $procurement = Role::firstOrCreate(['name' => 'Procurement', 'guard_name' => 'web']);
-        $finance = Role::firstOrCreate(['name' => 'Finance', 'guard_name' => 'web']);
-        $viewer = Role::firstOrCreate(['name' => 'Viewer', 'guard_name' => 'web']);
+        $superAdmin  = Role::firstOrCreate(['name' => 'Super Admin',  'guard_name' => 'web']);
+        $admin       = Role::firstOrCreate(['name' => 'Admin',        'guard_name' => 'web']);
+        $procurement = Role::firstOrCreate(['name' => 'Procurement',  'guard_name' => 'web']);
+        $finance     = Role::firstOrCreate(['name' => 'Finance',      'guard_name' => 'web']);
+        $viewer      = Role::firstOrCreate(['name' => 'Viewer',       'guard_name' => 'web']);
 
-        // Assign permissions
-        $admin->syncPermissions(Permission::all());
+        // Super Admin gets ALL permissions (including manage-system)
+        $superAdmin->syncPermissions(Permission::all());
+
+        // Admin gets all permissions EXCEPT manage-system (no system infra access)
+        $admin->syncPermissions(
+            Permission::where('name', '!=', 'manage-system')->get()
+        );
 
         $procurement->syncPermissions([
             'create-invoice',
@@ -105,10 +114,11 @@ class RolePermissionSeeder extends Seeder
         $this->command->table(
             ['Role', 'Permissions'],
             [
-                ['Admin', implode(', ', $admin->permissions->pluck('name')->toArray())],
+                ['Super Admin', implode(', ', $superAdmin->permissions->pluck('name')->toArray())],
+                ['Admin',       implode(', ', $admin->permissions->pluck('name')->toArray())],
                 ['Procurement', implode(', ', $procurement->permissions->pluck('name')->toArray())],
-                ['Finance', implode(', ', $finance->permissions->pluck('name')->toArray())],
-                ['Viewer', implode(', ', $viewer->permissions->pluck('name')->toArray())],
+                ['Finance',     implode(', ', $finance->permissions->pluck('name')->toArray())],
+                ['Viewer',      implode(', ', $viewer->permissions->pluck('name')->toArray())],
             ]
         );
     }

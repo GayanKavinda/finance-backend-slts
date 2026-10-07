@@ -3,25 +3,32 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 
 class UserManagementController extends Controller
 {
     /**
-     * List all users with their roles.
-     * Includes soft-deleted users so admins can see deactivated accounts.
+     * List users. Admin cannot see Super Admin users.
+     * Super Admin can see everyone.
      */
     public function index(Request $request)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $query = User::withTrashed()
             ->with('roles:id,name')
             ->withCount('loginActivities')
             ->select(['id', 'name', 'email', 'avatar_path', 'created_at', 'deleted_at'])
             ->latest();
+
+        // Admin cannot see Super Admin users
+        if (!$isSuperAdmin) {
+            $query->whereDoesntHave('roles', fn($q) => $q->where('name', 'Super Admin'));
+        }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -42,12 +49,18 @@ class UserManagementController extends Controller
      */
     public function show($id)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $user = User::withTrashed()
             ->with(['roles:id,name'])
             ->withCount('loginActivities')
             ->findOrFail($id);
 
-        // Last login
+        // Admin cannot view Super Admin users
+        if (!$isSuperAdmin && $user->hasRole('Super Admin')) {
+            abort(403, 'Access denied.');
+        }
+
         $lastLogin = $user->loginActivities()
             ->where('status', 'success')
             ->latest('created_at')
@@ -60,23 +73,37 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Assign a role to a user (replaces existing role).
-     * One user = one role in this system.
+     * Assign a role to a user.
+     * Admin cannot assign or remove Super Admin role.
      */
     public function assignRole(Request $request, $id)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $data = $request->validate([
             'role' => 'required|string|exists:roles,name',
         ]);
 
         $user = User::findOrFail($id);
 
-        // Prevent admin from changing their own role
+        // Prevent changing own role
         if ($user->id === auth()->id()) {
             abort(422, 'You cannot change your own role.');
         }
 
+        // Admin cannot manage Super Admin users
+        if (!$isSuperAdmin && ($user->hasRole('Super Admin') || $data['role'] === 'Super Admin')) {
+            abort(403, 'You cannot assign or manage the Super Admin role.');
+        }
+
+        $oldRole = $user->roles->pluck('name')->implode(', ') ?: 'None';
         $user->syncRoles([$data['role']]);
+
+        AuditLogger::log(
+            "Assigned Role: {$oldRole} → {$data['role']}",
+            'User',
+            $user->id
+        );
 
         return response()->json([
             'message' => "Role '{$data['role']}' assigned to {$user->name}.",
@@ -85,32 +112,29 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Get all available roles (for the role assignment dropdown).
-     */
-    public function roles()
-    {
-        $roles = Role::select('id', 'name')->get();
-        return response()->json($roles);
-    }
-
-    /**
      * Deactivate (soft delete) a user.
      */
     public function deactivate($id)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $user = User::findOrFail($id);
 
         if ($user->id === auth()->id()) {
             abort(422, 'You cannot deactivate your own account.');
         }
 
-        // Revoke all tokens so they are immediately logged out
+        // Admin cannot deactivate Super Admin users
+        if (!$isSuperAdmin && $user->hasRole('Super Admin')) {
+            abort(403, 'You cannot deactivate a Super Admin account.');
+        }
+
         $user->tokens()->delete();
         $user->delete();
 
-        return response()->json([
-            'message' => "{$user->name} has been deactivated.",
-        ]);
+        AuditLogger::log('Deactivated User', 'User', $user->id);
+
+        return response()->json(['message' => "{$user->name} has been deactivated."]);
     }
 
     /**
@@ -118,13 +142,22 @@ class UserManagementController extends Controller
      */
     public function reactivate($id)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $user = User::withTrashed()->findOrFail($id);
 
         if (!$user->trashed()) {
             abort(422, 'User is already active.');
         }
 
+        // Admin cannot reactivate Super Admin users
+        if (!$isSuperAdmin && $user->hasRole('Super Admin')) {
+            abort(403, 'You cannot reactivate a Super Admin account.');
+        }
+
         $user->restore();
+
+        AuditLogger::log('Reactivated User', 'User', $user->id);
 
         return response()->json([
             'message' => "{$user->name} has been reactivated.",
@@ -133,24 +166,31 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Permanently delete a user from the database.
+     * Permanently delete a user.
      */
     public function permanentDelete($id)
     {
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin');
+
         $user = User::withTrashed()->findOrFail($id);
 
         if ($user->id === auth()->id()) {
             abort(422, 'You cannot permanently delete your own account from here.');
         }
 
-        // Revoke all tokens
-        $user->tokens()->delete();
+        // Admin cannot permanently delete Super Admin users
+        if (!$isSuperAdmin && $user->hasRole('Super Admin')) {
+            abort(403, 'You cannot delete a Super Admin account.');
+        }
 
-        // Permanent delete
+        $userName = $user->name;
+        $userId   = $user->id;
+
+        $user->tokens()->delete();
         $user->forceDelete();
 
-        return response()->json([
-            'message' => "{$user->name} has been permanently deleted.",
-        ]);
+        AuditLogger::log("Permanently Deleted User: {$userName}", 'User', $userId);
+
+        return response()->json(['message' => "{$userName} has been permanently deleted."]);
     }
 }

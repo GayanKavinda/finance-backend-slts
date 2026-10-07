@@ -24,28 +24,54 @@ class BillingDomainService
     }
 
     /**
-     * Record a customer payment atomically.
+     * Record a customer installment/milestone payment atomically.
      */
     public function recordPayment(Invoice $invoice, array $data)
     {
         return DB::transaction(function () use ($invoice, $data) {
             $receiptNumber = $this->generateReceiptNumber();
+            $paymentAmount = (float) $data['payment_amount'];
+            $retentionAmount = (float) ($data['retention_amount'] ?? 0);
+
+            // Create individual installment payment record
+            $payment = \App\Models\InvoicePayment::create([
+                'invoice_id' => $invoice->id,
+                'amount' => $paymentAmount,
+                'retention_amount' => $retentionAmount,
+                'milestone_name' => $data['milestone_name'] ?? 'Payment Installment',
+                'payment_method' => $data['payment_method'] ?? 'Cheque',
+                'cheque_number' => $data['cheque_number'] ?? null,
+                'bank_name' => $data['bank_name'] ?? null,
+                'receipt_number' => $receiptNumber,
+                'payment_date' => $data['payment_received_date'],
+                'notes' => $data['notes'] ?? null,
+                'recorded_by' => Auth::id(),
+            ]);
+
+            // Cumulative calculations
+            $totalReceivedSoFar = (float) $invoice->payments()->sum('amount');
+            $totalPayable = (float) $invoice->total_amount;
 
             $invoice->update([
-                'cheque_number' => $data['cheque_number'],
-                'bank_name' => $data['bank_name'],
-                'payment_amount' => $data['payment_amount'],
+                'cheque_number' => $data['cheque_number'] ?? $invoice->cheque_number,
+                'bank_name' => $data['bank_name'] ?? $invoice->bank_name,
+                'payment_amount' => $totalReceivedSoFar,
                 'payment_received_date' => $data['payment_received_date'],
                 'receipt_number' => $receiptNumber,
                 'recorded_by' => Auth::id(),
             ]);
 
-            return $this->workflow->transitionTo(
-                $invoice,
-                Invoice::STATUS_PAYMENT_RECEIVED,
-                Auth::user(),
-                "Payment received via domain service: Cheque {$data['cheque_number']}"
-            );
+            // Transition status to Payment Received if not already
+            if ($invoice->status === Invoice::STATUS_APPROVED) {
+                $this->workflow->transitionTo(
+                    $invoice,
+                    Invoice::STATUS_PAYMENT_RECEIVED,
+                    Auth::user(),
+                    "Installment of LKR {$paymentAmount} received (Receipt #{$receiptNumber})"
+                );
+            }
+
+            return $payment;
         });
     }
 

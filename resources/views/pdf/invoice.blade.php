@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +8,7 @@
         @page {
             margin: 0;
             padding: 0;
+            size: A4 portrait;
         }
 
         * {
@@ -18,668 +18,422 @@
         }
 
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 13px;
-            line-height: 1.5;
-            color: #1e293b;
-            background: #f8fafc;
-            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.45;
+            color: #0f172a;
+            background: #ffffff;
             margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .invoice-wrapper {
-            max-width: 210mm;
-            margin: 0 auto;
-            background: white;
+        .page-container {
+            width: 100%;
+            height: 100%;
+            min-height: 297mm;
+            padding: 36px 42px;
+            background: #ffffff;
             position: relative;
         }
 
-        /* Watermark */
-        .watermark {
+        /* Top Brand Strip */
+        .top-brand-bar {
+            height: 4px;
+            background: #0f172a;
+            width: 100%;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            opacity: 0.03;
-            font-size: 180px;
-            font-weight: 900;
-            color: #004A99;
-            pointer-events: none;
-            z-index: 0;
-            user-select: none;
+            top: 0;
+            left: 0;
         }
 
         /* Header Section */
-        .header {
-            padding: 40px 40px 30px 40px;
-            border-bottom: 1px solid #e2e8f0;
-            position: relative;
-            z-index: 1;
-        }
-
-        .header-content {
-            display: table;
+        .header-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 28px;
         }
 
-        .header-left,
-        .header-right {
-            display: table-cell;
+        .header-table td {
             vertical-align: top;
         }
 
-        .header-left {
-            width: 55%;
-        }
-
-        .header-right {
-            width: 45%;
-            text-align: right;
-        }
-
-        .company-branding {
-            margin-bottom: 15px;
-        }
-
-        .logo-row {
-            display: table;
-            margin-bottom: 12px;
-        }
-
-        .logo-icon {
-            display: table-cell;
-            width: 48px;
-            height: 48px;
-            background: #004A99;
-            border-radius: 8px;
-            vertical-align: middle;
-            text-align: center;
-            padding-top: 8px;
-        }
-
-        .logo-icon svg {
-            width: 32px;
-            height: 32px;
-            fill: white;
-        }
-
-        .logo-text {
-            display: table-cell;
-            vertical-align: middle;
-            padding-left: 12px;
-        }
-
-        .company-name {
-            font-size: 20px;
-            font-weight: 800;
-            color: #003366;
+        .brand-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.2px;
             text-transform: uppercase;
-            letter-spacing: -0.5px;
-            line-height: 1.2;
         }
 
-        .company-tagline {
-            font-size: 9px;
+        .brand-subtitle {
+            font-size: 10px;
+            font-weight: 500;
             color: #64748b;
+            margin-top: 1px;
+        }
+
+        .brand-address {
+            font-size: 9.5px;
+            color: #475569;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .doc-title {
+            text-align: right;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #0f172a;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 600;
+        }
+
+        .doc-badge {
+            text-align: right;
             margin-top: 2px;
         }
 
-        .company-address {
-            font-size: 11px;
-            color: #475569;
-            line-height: 1.6;
-            max-width: 280px;
-        }
-
-        .company-address .label {
-            color: #94a3b8;
-        }
-
-        .invoice-title {
-            font-size: 36px;
-            font-weight: 300;
-            color: #334155;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-
-        .official-badge {
+        .badge-pill {
             display: inline-block;
-            background: #004A99;
-            color: white;
-            font-size: 9px;
-            font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 3px;
+            padding: 2px 7px;
+            font-size: 8.5px;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 20px;
+            border-radius: 4px;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
         }
 
-        .invoice-meta-grid {
-            font-size: 11px;
-        }
-
-        .meta-row {
-            margin-bottom: 6px;
-        }
-
-        .meta-label {
-            color: #94a3b8;
-            text-transform: uppercase;
-            font-weight: 700;
-            font-size: 9px;
-            display: inline-block;
-            width: 80px;
-        }
-
-        .meta-value {
-            color: #1e293b;
-            font-weight: 600;
-        }
-
-        .meta-value.due-date {
-            color: #2563eb;
-        }
-
-        /* Billing Section */
-        .billing-section {
-            padding: 30px 40px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            position: relative;
-            z-index: 1;
-        }
-
-        .billing-grid {
-            display: table;
+        /* Metadata & Customer Block */
+        .info-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
         }
 
-        .billing-col {
-            display: table-cell;
+        .info-table td {
+            padding: 14px 16px;
             vertical-align: top;
             width: 50%;
         }
 
-        .billing-col:first-child {
-            padding-right: 30px;
-        }
-
-        .section-heading {
-            font-size: 9px;
+        .block-label {
+            font-size: 8.5px;
             font-weight: 700;
-            color: #94a3b8;
+            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-        }
-
-        .billed-to-name {
-            font-size: 15px;
-            font-weight: 700;
-            color: #1e293b;
+            letter-spacing: 0.8px;
             margin-bottom: 4px;
         }
 
-        .billed-to-details {
-            font-size: 11px;
-            color: #475569;
-            line-height: 1.6;
-        }
-
-        .service-details {
-            font-size: 11px;
-            color: #475569;
-            line-height: 1.8;
-        }
-
-        .service-label {
+        .client-name {
+            font-size: 12px;
             font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 3px;
+        }
+
+        .client-text {
+            font-size: 9.5px;
+            color: #475569;
+            line-height: 1.4;
+        }
+
+        .meta-line {
+            font-size: 9.5px;
+            margin-bottom: 3px;
+            display: table;
+            width: 100%;
+        }
+
+        .meta-line-label {
+            display: table-cell;
+            color: #64748b;
+            width: 95px;
+        }
+
+        .meta-line-val {
+            display: table-cell;
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        /* Items Ledger Table */
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        .ledger-table th {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 8.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .ledger-table th.tar,
+        .ledger-table td.tar {
+            text-align: right;
+        }
+
+        .ledger-table td {
+            padding: 10px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 10px;
             color: #1e293b;
         }
 
-        /* Items Table */
-        .items-section {
-            padding: 30px 40px;
-            position: relative;
-            z-index: 1;
+        .item-primary {
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 2px;
         }
 
-        .items-table {
+        .item-subtext {
+            font-size: 8.5px;
+            color: #64748b;
+        }
+
+        /* Summary / Total Section */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 28px;
+        }
+
+        .summary-table td {
+            vertical-align: top;
+        }
+
+        .bank-details-box {
+            width: 58%;
+            padding-right: 20px;
+        }
+
+        .bank-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+
+        .bank-card-title {
+            font-size: 8.5px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 5px;
+        }
+
+        .bank-card-text {
+            font-size: 9px;
+            color: #475569;
+            line-height: 1.45;
+        }
+
+        .totals-box {
+            width: 42%;
+        }
+
+        .totals-subtable {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .items-table thead tr {
-            border-bottom: 2px solid #1e293b;
-        }
-
-        .items-table th {
-            padding: 12px 8px;
-            text-align: left;
-            font-size: 10px;
-            font-weight: 700;
-            color: #1e293b;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
-
-        .items-table th.text-center {
-            text-align: center;
-        }
-
-        .items-table th.text-right {
-            text-align: right;
-        }
-
-        .items-table tbody tr {
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .items-table td {
-            padding: 20px 8px;
-            vertical-align: top;
-        }
-
-        .item-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 13px;
-            margin-bottom: 3px;
-        }
-
-        .item-description {
-            font-size: 10px;
-            color: #64748b;
-            line-height: 1.5;
-            max-width: 400px;
-        }
-
-        .po-number {
-            font-family: 'Courier New', monospace;
-            color: #475569;
-            font-style: italic;
-            text-align: center;
-            font-size: 12px;
-        }
-
-        .item-amount {
-            text-align: right;
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 13px;
-        }
-
-        /* Summary Section */
-        .summary-section {
-            padding: 30px 40px;
-            background: white;
-            position: relative;
-            z-index: 1;
-        }
-
-        .summary-grid {
-            display: table;
-            width: 100%;
-        }
-
-        .summary-left {
-            display: table-cell;
-            width: 50%;
-            vertical-align: bottom;
-            padding-right: 30px;
-        }
-
-        .summary-right {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-        }
-
-        .payment-info-box {
-            background: #e6f0fa;
-            border: 1px solid #bfdbf7;
-            border-radius: 6px;
-            padding: 18px;
-        }
-
-        .payment-info-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: #004A99;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .payment-info-text {
-            font-size: 10px;
-            color: #475569;
-            line-height: 1.6;
-            font-style: italic;
-        }
-
-        .totals-table {
-            width: 100%;
-        }
-
-        .totals-table tr {
-            border: none;
-        }
-
-        .totals-table td {
-            padding: 8px 0;
-            font-size: 12px;
+        .totals-subtable td {
+            padding: 4px 0;
+            font-size: 9.5px;
         }
 
         .totals-label {
             color: #64748b;
         }
 
-        .totals-value {
+        .totals-val {
             text-align: right;
             font-weight: 600;
-            color: #1e293b;
+            color: #0f172a;
         }
 
-        .total-row {
-            border-top: 1px solid #cbd5e1;
-            padding-top: 12px !important;
-        }
-
-        .total-row td {
-            padding-top: 12px;
-        }
-
-        .grand-total-label {
-            font-size: 10px;
+        .grand-total-row td {
+            padding-top: 8px;
+            border-top: 1px solid #0f172a;
+            font-size: 12px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #1e293b;
-        }
-
-        .grand-total-currency {
-            font-size: 10px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .grand-total-amount {
-            font-size: 24px;
-            font-weight: 900;
-            color: #1e293b;
+            color: #0f172a;
         }
 
         /* Footer */
-        .footer {
-            padding: 30px 40px;
-            background: #0f172a;
-            color: #94a3b8;
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer-grid {
-            display: table;
+        .footer-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #f1f5f9;
         }
 
-        .footer-left {
-            display: table-cell;
-            width: 60%;
+        .footer-table td {
             vertical-align: middle;
+            font-size: 8.5px;
+            color: #94a3b8;
         }
 
-        .footer-right {
-            display: table-cell;
-            width: 40%;
+        .auth-notice {
             text-align: right;
-            vertical-align: middle;
-        }
-
-        .footer-thanks {
-            font-size: 11px;
-            font-weight: 600;
-            color: white;
-            margin-bottom: 3px;
-        }
-
-        .footer-subtitle {
-            font-size: 9px;
-            color: #64748b;
-        }
-
-        .hash-code {
-            display: inline-block;
-            padding: 6px 10px;
-            border: 1px solid #334155;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 9px;
-            color: #94a3b8;
-            margin-right: 15px;
-        }
-
-        .qr-placeholder {
-            display: inline-block;
-            width: 60px;
-            height: 60px;
-            background: white;
-            padding: 2px;
-            border-radius: 3px;
-            vertical-align: middle;
-        }
-
-        .qr-inner {
-            width: 100%;
-            height: 100%;
-            background: #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .footer-legal {
-            margin-top: 25px;
-            padding-top: 18px;
-            border-top: 1px solid #1e293b;
-            text-align: center;
-            font-size: 9px;
-            color: #475569;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
+            font-style: italic;
         }
     </style>
 </head>
-
 <body>
+    <div class="page-container">
+        <div class="top-brand-bar"></div>
 
-    <div class="invoice-wrapper">
-        <!-- Watermark -->
-        <div class="watermark">{{ $invoice->status === 'Banked' ? 'BANKED' : 'OFFICIAL' }}</div>
+        <!-- Header -->
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="brand-title">Sri Lanka Telecom Services</div>
+                    <div class="brand-subtitle">Commercial & Finance Division</div>
+                    <div class="brand-address">
+                        Lotus Road, P.O. Box 503, Colombo 01, Sri Lanka<br>
+                        Tel: +94 11 232 9711 &nbsp;·&nbsp; VAT Reg: 114002847-7000
+                    </div>
+                </td>
+                <td style="text-align: right;">
+                    <div class="doc-title">TAX INVOICE</div>
+                    <div class="doc-badge">
+                        <span class="badge-pill">{{ $invoice->status }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-        <!-- Header Section -->
-        <div class="header">
-            <div class="header-content">
-                <div class="header-left">
-                    <div class="company-branding">
-                        <div class="logo-row">
-                            <div class="logo-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </div>
-                            <div class="logo-text">
-                                <div class="company-name">{{ $company['name'] }}</div>
-                                <div class="company-tagline">Connectivity & Infrastructure Excellence</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="company-address">
-                        {{ $company['address'] }}<br>
-                        <span class="label">T:</span> +94 11 232 9711<br>
-                        <span class="label">E:</span> billing@sltservices.lk
-                    </div>
-                </div>
-                <div class="header-right">
-                    <div class="invoice-title">INVOICE</div>
-                    <div class="official-badge">Official Electronic Document</div>
-                    <div class="invoice-meta-grid">
-                        <div class="meta-row">
-                            <span class="meta-label">Invoice No:</span>
-                            <span class="meta-value">{{ $invoice->invoice_number }}</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Date:</span>
-                            <span class="meta-value">{{ $invoice->created_at->format('F d, Y') }}</span>
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Due Date:</span>
-                            <span class="meta-value due-date">{{ $invoice->created_at->addDays(14)->format('F d, Y') }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Billing Section -->
-        <div class="billing-section">
-            <div class="billing-grid">
-                <div class="invoice-header">
-                    <div class="title">TAX INVOICE / REVENUE INVOICE</div>
-                    <div class="invoice-number"># {{ $invoice->taxInvoice->tax_invoice_number ?? $invoice->invoice_number }}</div>
-                </div>
-                <div class="billing-col">
-                    <div class="section-heading">Billed To</div>
-                    <div class="billed-to-name">{{ $invoice->customer->name }}</div>
-                    <div class="billed-to-details">
+        <!-- Client & Metadata Grid -->
+        <table class="info-table">
+            <tr>
+                <td>
+                    <div class="block-label">Billed Recipient</div>
+                    <div class="client-name">{{ $invoice->customer->name ?? 'Valued Customer' }}</div>
+                    <div class="client-text">
                         @if($invoice->billing_address)
-                        {!! nl2br(e($invoice->billing_address)) !!}<br>
+                            {!! nl2br(e($invoice->billing_address)) !!}
+                        @elseif($invoice->customer && $invoice->customer->billing_address)
+                            {!! nl2br(e($invoice->customer->billing_address)) !!}
                         @else
-                            @if($invoice->customer->department)
-                            {{ $invoice->customer->department }}<br>
-                            @endif
-                            @if($invoice->customer->address)
-                            {{ $invoice->customer->address }}<br>
-                            @endif
+                            Official Client Address On Record
                         @endif
-                        @if($invoice->customer->email)
-                        {{ $invoice->customer->email }}<br>
-                        @endif
-                        @if($invoice->customer->vat_number)
-                        <span class="service-label">VAT Reg:</span> {{ $invoice->customer->vat_number }}
+                        @if($invoice->customer && $invoice->customer->tax_number)
+                            <br><strong>VAT/Tax ID:</strong> {{ $invoice->customer->tax_number }}
                         @endif
                     </div>
-                </div>
-                <div class="billing-col">
-                    <div class="section-heading">Service Details</div>
-                    <div class="service-details">
-                        @if($invoice->project_name)
-                        <span class="service-label">Project:</span> {{ $invoice->project_name }}<br>
-                        @endif
-                        @if($invoice->purchaseOrder)
-                        <span class="service-label">Contract Ref:</span> {{ $invoice->purchaseOrder->contract_reference ?? 'N/A' }}<br>
-                        @endif
-                        <span class="service-label">Currency:</span> LKR (Sri Lankan Rupee)
+                </td>
+                <td>
+                    <div class="block-label">Invoice Specification</div>
+                    <div class="meta-line">
+                        <span class="meta-line-label">Invoice Reference:</span>
+                        <span class="meta-line-val">{{ $invoice->invoice_number }}</span>
                     </div>
-                </div>
-            </div>
-        </div>
+                    <div class="meta-line">
+                        <span class="meta-line-label">Tax Invoice No:</span>
+                        <span class="meta-line-val">{{ $taxInvoiceNumber ?? ('TAX-' . $invoice->invoice_number) }}</span>
+                    </div>
+                    <div class="meta-line">
+                        <span class="meta-line-label">Issue Date:</span>
+                        <span class="meta-line-val">{{ $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('d F Y') : now()->format('d F Y') }}</span>
+                    </div>
+                    <div class="meta-line">
+                        <span class="meta-line-label">Purchase Order:</span>
+                        <span class="meta-line-val">{{ $invoice->customer_po_number ?? ($invoice->purchaseOrder ? $invoice->purchaseOrder->po_number : 'N/A') }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-        <!-- Items Table -->
-        <div class="items-section">
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th style="width: 50%;">Description</th>
-                        <th class="text-center">PO Number</th>
-                        <th class="text-right">Amount (LKR)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div class="item-name">{{ $invoice->service_description ?? 'Professional Services' }}</div>
-                            <div class="item-description">
-                                {{ $invoice->customer_po_description ?? $invoice->service_details ?? 'Consulting and implementation services for the current billing period.' }}
-                            </div>
-                        </td>
-                        <td class="po-number">
-                            {{ $invoice->customer_po_number ?? $invoice->purchaseOrder->po_number ?? 'N/A' }}
-                        </td>
-                        <td class="item-amount">
-                            {{ number_format($invoice->invoice_amount, 2) }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+        <!-- Line Item Ledger -->
+        <table class="ledger-table">
+            <thead>
+                <tr>
+                    <th style="width: 58%;">Description / Scope of Work</th>
+                    <th style="width: 17%;">PO Reference</th>
+                    <th style="width: 25%;" class="tar">Amount (LKR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="item-primary">
+                            {{ $invoice->customer_po_description ?? 'Professional Telecommunication & Engineering Deliverables' }}
+                        </div>
+                        <div class="item-subtext">
+                            Rendered under contract and procurement schedule specifications.
+                        </div>
+                    </td>
+                    <td>
+                        {{ $invoice->customer_po_number ?? ($invoice->purchaseOrder ? $invoice->purchaseOrder->po_number : 'Direct Assignment') }}
+                    </td>
+                    <td class="tar font-medium">
+                        {{ number_format($invoice->invoice_amount, 2) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-        <!-- Summary Section -->
-        <div class="summary-section">
-            <div class="summary-grid">
-                <div class="summary-left">
-                    <div class="payment-info-box">
-                        <div class="payment-info-title">Payment Information</div>
-                        <div class="payment-info-text">
-                            Please include the invoice number ({{ $invoice->invoice_number }}) as a reference in all transfers.
-                            Payments are accepted via RTGS or Online Banking to Bank of Ceylon,
-                            Corporate Branch A/C 0001234567.
+        <!-- Totals & Payment Settlement Details -->
+        <table class="summary-table">
+            <tr>
+                <td class="bank-details-box">
+                    <div class="bank-card">
+                        <div class="bank-card-title">Settlement Instructions</div>
+                        <div class="bank-card-text">
+                            Beneficiary: <strong>Sri Lanka Telecom Services Limited</strong><br>
+                            Bank: Bank of Ceylon &nbsp;·&nbsp; Corporate Branch<br>
+                            Account No: <strong>0001234567</strong><br>
+                            Reference: <strong>{{ $invoice->invoice_number }}</strong>
                         </div>
                     </div>
-                </div>
-                <div class="summary-right">
-                    <table class="totals-table">
+                </td>
+                <td class="totals-box">
+                    <table class="totals-subtable">
                         <tr>
-                            <td class="totals-label">Subtotal</td>
-                            <td class="totals-value">{{ number_format($invoice->invoice_amount, 2) }}</td>
+                            <td class="totals-label">Subtotal (Net)</td>
+                            <td class="totals-val">{{ number_format($invoice->invoice_amount, 2) }}</td>
                         </tr>
                         <tr>
-                            <td class="totals-label">VAT ({{ optional($invoice->taxInvoice)->tax_percentage ?? 0 }}%)</td>
-                            <td class="totals-value">{{ number_format(optional($invoice->taxInvoice)->tax_amount ?? 0, 2) }}</td>
+                            <td class="totals-label">Value Added Tax ({{ $taxPercentage ?? 18 }}%)</td>
+                            <td class="totals-val">{{ number_format($taxAmount ?? 0, 2) }}</td>
                         </tr>
-                        <tr class="total-row">
-                            <td class="grand-total-label">Grand Total</td>
-                            <td class="totals-value">
-                                <span class="grand-total-currency">LKR</span>
-                                <span class="grand-total-amount">{{ number_format($invoice->total_amount, 2) }}</span>
-                            </td>
+                        <tr class="grand-total-row">
+                            <td>Grand Total (LKR)</td>
+                            <td class="tar">{{ number_format($totalAmount ?? $invoice->invoice_amount, 2) }}</td>
                         </tr>
                     </table>
-                </div>
-            </div>
-        </div>
+                </td>
+            </tr>
+        </table>
 
-        <!-- Footer -->
-        <div class="footer">
-            <div class="footer-grid">
-                <div class="footer-left">
-                    <div class="footer-thanks">Thank you for your continued business.</div>
-                    <div class="footer-subtitle">{{ $company['name'] }} is a subsidiary of SLT-Mobitel Group.</div>
-                </div>
-                <div class="footer-right">
-                    <span class="hash-code">HASH: {{ substr(md5($invoice->invoice_number), 0, 19) }}</span>
-                    <div class="qr-placeholder">
-                        <div class="qr-inner">Secure<br>QR</div>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-legal">
-                Authorized Signatory Not Required for Computer Generated Invoice
-            </div>
-        </div>
+        <!-- Bottom Signature / System Authentication -->
+        <table class="footer-table">
+            <tr>
+                <td>
+                    This is an electronically validated commercial document generated via SLT ProcureX ERP.
+                </td>
+                <td class="auth-notice">
+                    Authentication Hash: {{ strtoupper(substr(md5($invoice->invoice_number . $invoice->id), 0, 16)) }}
+                </td>
+            </tr>
+        </table>
     </div>
-
 </body>
-
 </html>

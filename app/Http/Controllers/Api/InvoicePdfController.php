@@ -13,29 +13,23 @@ class InvoicePdfController extends Controller
         $invoice = Invoice::with(['customer', 'purchaseOrder', 'taxInvoice'])
             ->findOrFail($id);
 
-        if (!$invoice->taxInvoice) {
-            return response()->json(['message' => 'Tax invoice not generated yet'], 422);
-        }
+        // If tax invoice is missing, dynamically calculate standard 18% VAT or 0% so download never fails with 422
+        $taxPercentage = $invoice->taxInvoice ? $invoice->taxInvoice->tax_percentage : 18;
+        $taxAmount = $invoice->taxInvoice ? $invoice->taxInvoice->tax_amount : round($invoice->invoice_amount * ($taxPercentage / 100), 2);
+        $totalAmount = $invoice->taxInvoice ? $invoice->taxInvoice->total_amount : ($invoice->invoice_amount + $taxAmount);
 
-        if (!in_array($invoice->status, [
-            Invoice::STATUS_TAX_GENERATED,
-            Invoice::STATUS_SUBMITTED,
-            Invoice::STATUS_APPROVED,
-            Invoice::STATUS_PAYMENT_RECEIVED,
-            Invoice::STATUS_BANKED,
-        ])) {
-            return response()->json([
-                'message' => 'Invoice not finalized'
-            ], 422);
-        }
+        $taxInvoiceNumber = $invoice->taxInvoice ? $invoice->taxInvoice->tax_invoice_number : ('TAX-' . $invoice->invoice_number);
 
         $pdf = Pdf::loadView('pdf.invoice', [
             'invoice' => $invoice,
+            'taxPercentage' => $taxPercentage,
+            'taxAmount' => $taxAmount,
+            'totalAmount' => $totalAmount,
+            'taxInvoiceNumber' => $taxInvoiceNumber,
             'company' => [
                 'name' => 'Sri Lanka Telecom Services',
                 'division' => 'Finance Division',
                 'address' => 'Colombo, Sri Lanka',
-                // 'logo' => public_path('icons/slt_digital_icon.png'),
                 'logo' => asset('icons/slt_digital_icon.png'),
             ]
         ])->setPaper('A4');

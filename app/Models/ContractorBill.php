@@ -88,4 +88,26 @@ class ContractorBill extends Model
     {
         return $this->belongsTo(PurchaseOrder::class, 'po_id');
     }
+
+    public function payments()
+    {
+        return $this->hasMany(ContractorBillPayment::class)->orderBy('payment_date', 'asc');
+    }
+
+    public function getTotalPaidAttribute()
+    {
+        return (float) $this->payments()->sum('amount');
+    }
+
+    public function getTotalRetentionAttribute()
+    {
+        return (float) $this->payments()->sum('retention_amount');
+    }
+
+    public function getBalanceDueAttribute()
+    {
+        $totalPayable = (float) $this->amount;
+        $totalPaid = (float) $this->total_paid + (float) $this->total_retention;
+        return max(0, $totalPayable - $totalPaid);
+    }
 }

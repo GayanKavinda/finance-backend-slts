@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('audit_logs', function (Blueprint $table) {
+            // Drop the old foreign key constraint first
+            $table->dropForeign(['user_id']);
+            // Make user_id nullable (system/anonymous actions)
+            $table->unsignedBigInteger('user_id')->nullable()->change();
+            // Re-add the foreign key with nullOnDelete
+            $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('audit_logs', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
+            $table->unsignedBigInteger('user_id')->nullable(false)->change();
+            $table->foreign('user_id')->references('id')->on('users');
+        });
+    }
+};

@@ -29,49 +29,46 @@ class DatabaseSeeder extends Seeder
         // Create specific users for each role
         $roleUsers = [
             [
-                'name' => 'Admin User',
-                'email' => 'admin@finance.com',
+                'name'     => 'Super Admin',
+                'email'    => 'superadmin@finance.com',
                 'password' => 'password',
-                'role' => 'Admin',
+                'role'     => 'Super Admin',
             ],
             [
-                'name' => 'Procurement User',
-                'email' => 'procurement@finance.com',
+                'name'     => 'Admin User',
+                'email'    => 'admin@finance.com',
                 'password' => 'password',
-                'role' => 'Procurement',
+                'role'     => 'Admin',
             ],
             [
-                'name' => 'Finance User',
-                'email' => 'finance@finance.com',
+                'name'     => 'Procurement User',
+                'email'    => 'procurement@finance.com',
                 'password' => 'password',
-                'role' => 'Finance',
+                'role'     => 'Procurement',
             ],
             [
-                'name' => 'Viewer User',
-                'email' => 'viewer@finance.com',
+                'name'     => 'Finance User',
+                'email'    => 'finance@finance.com',
                 'password' => 'password',
-                'role' => 'Viewer',
+                'role'     => 'Finance',
+            ],
+            [
+                'name'     => 'Viewer User',
+                'email'    => 'viewer@finance.com',
+                'password' => 'password',
+                'role'     => 'Viewer',
             ],
         ];
 
         foreach ($roleUsers as $userData) {
-            $user = User::factory()->create([
-                'name' => $userData['name'],
-                'email' => $userData['email'],
-                'password' => bcrypt($userData['password']),
-            ]);
-            $user->assignRole($userData['role']);
-        }
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        // Ensure Test User has Admin role
-        $user = User::where('email', 'test@example.com')->first();
-        if ($user) {
-            $user->assignRole('Admin');
+            $user = User::firstOrCreate(
+                ['email' => $userData['email']],
+                [
+                    'name'     => $userData['name'],
+                    'password' => bcrypt($userData['password']),
+                ]
+            );
+            $user->syncRoles([$userData['role']]);
         }
     }
 }

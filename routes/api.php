@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\InvoicePdfController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\InternalReceiptPdfController;
 use App\Http\Controllers\Api\PurchaseOrderPdfController;
 use App\Http\Controllers\Api\QuotationController;
@@ -186,17 +187,27 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/users/{id}/assign-role',  [\App\Http\Controllers\Api\UserManagementController::class, 'assignRole']);
             Route::delete('/users/{id}/deactivate', [\App\Http\Controllers\Api\UserManagementController::class, 'deactivate']);
             Route::post('/users/{id}/reactivate',   [\App\Http\Controllers\Api\UserManagementController::class, 'reactivate']);
-            Route::delete('/users/{id}/permanent',   [\App\Http\Controllers\Api\UserManagementController::class, 'permanentDelete']);
+            Route::delete('/users/{id}/permanent',  [\App\Http\Controllers\Api\UserManagementController::class, 'permanentDelete']);
         });
 
-        // Role & Permission Management
-        Route::apiResource('roles', RoleController::class);
-        Route::get('permissions', [PermissionController::class, 'index']);
+        // Role & Permission Management (Admin + Super Admin)
+        Route::middleware('can:manage-roles')->group(function () {
+            Route::apiResource('roles', RoleController::class);
+            Route::get('permissions', [PermissionController::class, 'index']);
+            Route::post('permissions', [PermissionController::class, 'store']);
+            Route::delete('permissions/{id}', [PermissionController::class, 'destroy']);
+        });
+
+        // Audit Logs — accessible to Admin (manage-users) and Super Admin
+        Route::middleware('can:manage-users')->group(function () {
+            Route::get('/audit-logs',      [AuditLogController::class, 'index']);
+            Route::get('/audit-logs/meta', [AuditLogController::class, 'meta']);
+        });
     });
 
-    // ── System Monitoring ─────────────────────────────────────────
+    // ── System Monitoring (Super Admin only) ──────────────────────
     Route::get('/system/metrics', [\App\Http\Controllers\Api\SystemMonitorController::class, 'getMetrics'])
-        ->middleware('can:manage-users');
+        ->middleware('can:manage-system');
     Route::get('/system/logs',    [\App\Http\Controllers\Api\SystemMonitorController::class, 'getLogs'])
-        ->middleware('can:manage-users');
+        ->middleware('can:manage-system');
 });
