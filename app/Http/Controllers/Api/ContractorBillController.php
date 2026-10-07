@@ -112,9 +112,10 @@ class ContractorBillController extends Controller
             ], 422);
         }
 
-        if ($bill->job->status !== \App\Models\ProjectJob::STATUS_COMPLETED) {
+        $allowedStatuses = [\App\Models\ProjectJob::STATUS_IN_PROGRESS, \App\Models\ProjectJob::STATUS_COMPLETED];
+        if (!in_array($bill->job->status, $allowedStatuses)) {
             return response()->json([
-                'message' => "Job '{$bill->job->name}' must be marked as Completed before verifying contractor bills."
+                'message' => "Job '{$bill->job->name}' must be In Progress or Completed before verifying contractor bills."
             ], 422);
         }
 

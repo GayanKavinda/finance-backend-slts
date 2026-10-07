@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tender extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     const STATUS_OPEN = 'Open';
     const STATUS_IN_PROGRESS = 'In Progress';

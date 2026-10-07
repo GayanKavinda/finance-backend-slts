@@ -47,6 +47,7 @@ class RolePermissionSeeder extends Seeder
             'manage-contractors',
             'enter-quotations',
             'select-contractor',
+            'verify-contractor-bill',
             'submit-contractor-bill',
             'approve-contractor-payment',
             'mark-contractor-paid',
@@ -77,6 +78,7 @@ class RolePermissionSeeder extends Seeder
             'manage-contractors',
             'enter-quotations',
             'select-contractor',
+            'verify-contractor-bill',
             'submit-contractor-bill',
         ]);
 

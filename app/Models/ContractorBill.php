@@ -17,6 +17,7 @@ class ContractorBill extends Model
 
     protected $fillable = [
         'job_id',
+        'po_id',
         'contractor_id',
         'bill_number',
         'amount',
@@ -81,5 +82,10 @@ class ContractorBill extends Model
     public function documents()
     {
         return $this->hasMany(ContractorBillDocument::class);
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class, 'po_id');
     }
 }
