@@ -19,7 +19,18 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:2500', 'http://127.0.0.1:2500', 'http://localhost:3100', 'http://127.0.0.1:3100'],
+    'allowed_origins' => array_filter(array_unique(array_merge(
+        [
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+            'http://localhost:2500',
+            'http://127.0.0.1:2500',
+            'http://localhost:3100',
+            'http://127.0.0.1:3100',
+            env('FRONTEND_URL', 'http://localhost:3000'),
+        ],
+        explode(',', env('CORS_ALLOWED_ORIGINS', ''))
+    ))),
 
     'allowed_origins_patterns' => [],
 

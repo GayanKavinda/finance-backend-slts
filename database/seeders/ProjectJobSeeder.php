@@ -12,15 +12,12 @@ class ProjectJobSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create jobs for awarded tenders
+        // Create jobs for all seeded tenders
         \App\Models\Tender::all()->each(function ($tender) {
-            // Only create jobs for relevant tender statuses
-            if (in_array($tender->status, ['Awarded', 'In Progress', 'Completed'])) {
-                \App\Models\ProjectJob::factory()->create([
-                    'tender_id' => $tender->id,
-                    'customer_id' => $tender->customer_id,
-                ]);
-            }
+            \App\Models\ProjectJob::factory()->create([
+                'tender_id' => $tender->id,
+                'customer_id' => $tender->customer_id,
+            ]);
         });
     }
 }

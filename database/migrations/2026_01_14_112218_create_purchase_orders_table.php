@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('billing_address');
             $table->foreignId('tender_id')->constrained()->cascadeOnDelete();
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
-            $table->enum('status', ['Draft', 'Approved'])->default('Draft');
+            $table->enum('status', ['Draft', 'Approved', 'Sent', 'Received', 'Cancelled'])->default('Draft');
             $table->timestamps();
         });
     }

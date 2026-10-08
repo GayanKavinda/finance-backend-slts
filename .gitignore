@@ -1,6 +1,13 @@
 *.log
 .DS_Store
 .env
+
+# Debug / scratch files — never commit these
+test_*.php
+test_*.txt
+list_users.php
+read_log.php
+routes_check.txt
 .env.backup
 .env.production
 .phpactor.json

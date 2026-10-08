@@ -25,7 +25,7 @@ class PurchaseOrderFactory extends Factory
             'billing_address' => $this->faker->address(),
             'tender_id' => \App\Models\Tender::factory(),
             'customer_id' => \App\Models\Customer::factory(),
-            'status' => $this->faker->randomElement(['Draft', 'Approved']),
+            'status' => $this->faker->randomElement(['Draft', 'Approved', 'Sent', 'Received']),
         ];
     }
 }

@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ $invoice->invoice_number }}</title>
+    <title>Tax Invoice #{{ $invoice->invoice_number }}</title>
     <style>
         @page {
-            margin: 0;
-            padding: 0;
+            margin: 15mm 15mm 15mm 15mm;
             size: A4 portrait;
+        }
+
+        @page :first {
+            margin: 15mm 15mm 15mm 15mm;
         }
 
         * {
@@ -18,40 +20,33 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.45;
-            color: #0f172a;
+            font-family: "DejaVu Sans", "Helvetica Neue", Arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #1e293b;
             background: #ffffff;
             margin: 0;
             padding: 0;
-            -webkit-font-smoothing: antialiased;
         }
 
         .page-container {
-            width: 100%;
-            height: 100%;
-            min-height: 297mm;
-            padding: 36px 42px;
-            background: #ffffff;
-            position: relative;
+            padding: 0;
         }
 
-        /* Top Brand Strip */
+        /* Top Brand Accent Bar */
         .top-brand-bar {
             height: 4px;
-            background: #0f172a;
+            background: #004A99;
             width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
+            margin-bottom: 20px;
         }
 
-        /* Header Section */
+        /* Header Table */
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
         }
 
         .header-table td {
@@ -59,22 +54,24 @@
         }
 
         .brand-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #0f172a;
+            font-size: 16px;
+            font-weight: 800;
+            color: #003366;
             letter-spacing: -0.2px;
             text-transform: uppercase;
         }
 
         .brand-subtitle {
-            font-size: 10px;
-            font-weight: 500;
+            font-size: 9.5px;
+            font-weight: 600;
             color: #64748b;
-            margin-top: 1px;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .brand-address {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #475569;
             margin-top: 6px;
             line-height: 1.4;
@@ -83,42 +80,41 @@
         .doc-title {
             text-align: right;
             font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #0f172a;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            color: #003366;
             text-transform: uppercase;
         }
 
         .doc-badge {
             text-align: right;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .badge-pill {
             display: inline-block;
-            padding: 2px 7px;
+            padding: 3px 9px;
             font-size: 8.5px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-radius: 4px;
-            background: #f1f5f9;
-            color: #334155;
-            border: 1px solid #e2e8f0;
+            letter-spacing: 0.6px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
         }
 
-        /* Metadata & Customer Block */
+        /* Info Grid Table */
         .info-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
+            page-break-inside: avoid;
         }
 
         .info-table td {
-            padding: 14px 16px;
+            padding: 12px 16px;
             vertical-align: top;
             width: 50%;
         }
@@ -126,15 +122,15 @@
         .block-label {
             font-size: 8.5px;
             font-weight: 700;
-            color: #64748b;
+            color: #004A99;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
 
         .client-name {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 12.5px;
+            font-weight: 700;
             color: #0f172a;
             margin-bottom: 3px;
         }
@@ -142,43 +138,42 @@
         .client-text {
             font-size: 9.5px;
             color: #475569;
-            line-height: 1.4;
+            line-height: 1.45;
         }
 
         .meta-line {
             font-size: 9.5px;
-            margin-bottom: 3px;
-            display: table;
-            width: 100%;
+            margin-bottom: 4px;
         }
 
         .meta-line-label {
-            display: table-cell;
+            display: inline-block;
             color: #64748b;
-            width: 95px;
+            width: 110px;
         }
 
         .meta-line-val {
-            display: table-cell;
+            display: inline-block;
             color: #0f172a;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         /* Items Ledger Table */
         .ledger-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
         }
 
         .ledger-table th {
-            background: #0f172a;
+            background: #003366;
             color: #ffffff;
             font-size: 8.5px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            padding: 8px 10px;
+            padding: 9px 12px;
             text-align: left;
         }
 
@@ -188,28 +183,32 @@
         }
 
         .ledger-table td {
-            padding: 10px 10px;
+            padding: 12px 12px;
             border-bottom: 1px solid #e2e8f0;
             font-size: 10px;
             color: #1e293b;
+            vertical-align: top;
         }
 
         .item-primary {
-            font-weight: 600;
+            font-weight: 700;
             color: #0f172a;
-            margin-bottom: 2px;
+            font-size: 11px;
+            margin-bottom: 3px;
         }
 
         .item-subtext {
-            font-size: 8.5px;
+            font-size: 9px;
             color: #64748b;
+            line-height: 1.4;
         }
 
         /* Summary / Total Section */
         .summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
+            page-break-inside: avoid;
         }
 
         .summary-table td {
@@ -217,34 +216,33 @@
         }
 
         .bank-details-box {
-            width: 58%;
+            width: 55%;
             padding-right: 20px;
         }
 
         .bank-card {
-            background: #ffffff;
+            background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
             padding: 12px 14px;
         }
 
         .bank-card-title {
             font-size: 8.5px;
             font-weight: 700;
-            color: #475569;
+            color: #004A99;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
 
         .bank-card-text {
             font-size: 9px;
             color: #475569;
-            line-height: 1.45;
+            line-height: 1.5;
         }
 
         .totals-box {
-            width: 42%;
+            width: 45%;
         }
 
         .totals-subtable {
@@ -253,46 +251,50 @@
         }
 
         .totals-subtable td {
-            padding: 4px 0;
-            font-size: 9.5px;
+            padding: 5px 0;
+            font-size: 10px;
         }
 
         .totals-label {
             color: #64748b;
+            font-weight: 500;
         }
 
         .totals-val {
             text-align: right;
-            font-weight: 600;
+            font-weight: 700;
             color: #0f172a;
         }
 
         .grand-total-row td {
-            padding-top: 8px;
-            border-top: 1px solid #0f172a;
-            font-size: 12px;
-            font-weight: 700;
-            color: #0f172a;
+            padding-top: 10px;
+            padding-bottom: 4px;
+            border-top: 2px solid #003366;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #003366;
         }
 
         /* Footer */
         .footer-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 24px;
-            padding-top: 16px;
-            border-top: 1px solid #f1f5f9;
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid #e2e8f0;
+            page-break-before: avoid;
         }
 
         .footer-table td {
             vertical-align: middle;
             font-size: 8.5px;
-            color: #94a3b8;
+            color: #64748b;
         }
 
         .auth-notice {
             text-align: right;
             font-style: italic;
+            color: #94a3b8;
         }
     </style>
 </head>
@@ -365,8 +367,8 @@
         <table class="ledger-table">
             <thead>
                 <tr>
-                    <th style="width: 58%;">Description / Scope of Work</th>
-                    <th style="width: 17%;">PO Reference</th>
+                    <th style="width: 55%;">Description / Scope of Work</th>
+                    <th style="width: 20%;">PO Reference</th>
                     <th style="width: 25%;" class="tar">Amount (LKR)</th>
                 </tr>
             </thead>
@@ -383,7 +385,7 @@
                     <td>
                         {{ $invoice->customer_po_number ?? ($invoice->purchaseOrder ? $invoice->purchaseOrder->po_number : 'Direct Assignment') }}
                     </td>
-                    <td class="tar font-medium">
+                    <td class="tar" style="font-weight: 700; font-size: 11px;">
                         {{ number_format($invoice->invoice_amount, 2) }}
                     </td>
                 </tr>
@@ -400,7 +402,7 @@
                             Beneficiary: <strong>Sri Lanka Telecom Services Limited</strong><br>
                             Bank: Bank of Ceylon &nbsp;·&nbsp; Corporate Branch<br>
                             Account No: <strong>0001234567</strong><br>
-                            Reference: <strong>{{ $invoice->invoice_number }}</strong>
+                            Payment Reference: <strong>{{ $invoice->invoice_number }}</strong>
                         </div>
                     </div>
                 </td>
@@ -408,15 +410,15 @@
                     <table class="totals-subtable">
                         <tr>
                             <td class="totals-label">Subtotal (Net)</td>
-                            <td class="totals-val">{{ number_format($invoice->invoice_amount, 2) }}</td>
+                            <td class="totals-val">LKR {{ number_format($invoice->invoice_amount, 2) }}</td>
                         </tr>
                         <tr>
                             <td class="totals-label">Value Added Tax ({{ $taxPercentage ?? 18 }}%)</td>
-                            <td class="totals-val">{{ number_format($taxAmount ?? 0, 2) }}</td>
+                            <td class="totals-val">LKR {{ number_format($taxAmount ?? 0, 2) }}</td>
                         </tr>
                         <tr class="grand-total-row">
                             <td>Grand Total (LKR)</td>
-                            <td class="tar">{{ number_format($totalAmount ?? $invoice->invoice_amount, 2) }}</td>
+                            <td class="tar">LKR {{ number_format($totalAmount ?? $invoice->invoice_amount, 2) }}</td>
                         </tr>
                     </table>
                 </td>

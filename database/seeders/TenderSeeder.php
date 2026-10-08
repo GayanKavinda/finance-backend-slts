@@ -12,10 +12,10 @@ class TenderSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create tenders for existing customers
+        // Create 1 tender for each existing customer (5 tenders total)
         \App\Models\Customer::all()->each(function ($customer) {
-            \App\Models\Tender::factory(rand(1, 3))->create([
-                'customer_id' => $customer->id
+            \App\Models\Tender::factory()->create([
+                'customer_id' => $customer->id,
             ]);
         });
     }

@@ -12,9 +12,9 @@ class PurchaseOrderSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create POs for existing jobs
+        // Create 1 PO for each existing job
         \App\Models\ProjectJob::all()->each(function ($job) {
-            \App\Models\PurchaseOrder::factory(rand(1, 2))->create([
+            \App\Models\PurchaseOrder::factory()->create([
                 'job_id' => $job->id,
                 'tender_id' => $job->tender_id,
                 'customer_id' => $job->customer_id,

@@ -217,6 +217,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
     </style>
 </head>
 <body>
@@ -284,6 +285,7 @@
                 <p>Our team is currently preparing the necessary project execution plans and mobilizing resources. A formal Tax Invoice for the awarded amount will be submitted to your finance division as per the agreed schedule.</p>
                 <p>Should you have any immediate clarifications, please do not hesitate to contact our project management office.</p>
             </div>
+
 
             <div class="signature-area">
                 <div class="signature-box">

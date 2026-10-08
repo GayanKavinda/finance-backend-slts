@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('bill_number')->unique();
             $table->decimal('amount', 15, 2);
             $table->date('bill_date');
-            $table->string('document_path'); // PDF/scan path
+            $table->string('document_path')->nullable(); // Legacy PDF/scan path, documents now stored in contractor_bill_documents
             $table->enum('status', ['Uploaded', 'Verified', 'Approved'])->default('Uploaded');
             $table->foreignId('verified_by')->nullable()->constrained('users')->nullOnDelete();
             $table->dateTime('verified_at')->nullable();

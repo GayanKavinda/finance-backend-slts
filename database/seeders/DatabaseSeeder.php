@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             TenderSeeder::class,
             ProjectJobSeeder::class,
             PurchaseOrderSeeder::class,
+            ContractorBillSeeder::class,
             InvoiceSeeder::class,
             ChequeTransactionSeeder::class,
         ]);

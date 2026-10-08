@@ -33,7 +33,7 @@ Route::post('/register', [AuthController::class, 'register'])
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:10,1');
 
-Route::post('/logout', [AuthController::class, 'logout']);
+
 
 Route::post('/forgot-password-otp', [PasswordResetController::class, 'forgotPassword'])
     ->middleware('throttle:5,1');
@@ -44,23 +44,14 @@ Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp'])
 Route::post('/reset-password-otp', [PasswordResetController::class, 'resetPasswordWithOtp'])
     ->middleware('throttle:5,1');
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+
+    // ── Auth ──────────────────────────────────────────────────────
+    Route::post('/logout', [AuthController::class, 'logout']);
 
     // ── User & Profile ────────────────────────────────────────────
 
     Route::get('/user', function (Request $request) {
-        $u = $request->user()->load('roles');
-        return response()->json([
-            'id'          => $u->id,
-            'name'        => $u->name,
-            'email'       => $u->email,
-            'avatar_url'  => $u->avatar_path ? '/storage/' . $u->avatar_path : null,
-            'roles'       => $u->roles->pluck('name'),
-            'permissions' => $u->getAllPermissions()->pluck('name'),
-        ]);
-    });
-
-    Route::get('/profile', function (Request $request) {
         $u = $request->user()->load('roles');
         return response()->json([
             'id'          => $u->id,
@@ -93,24 +84,38 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('contractors', ContractorController::class);
     Route::apiResource('tenders',     TenderController::class);
     Route::apiResource('jobs',        JobController::class);
+    Route::get('purchase-orders/stats', [PurchaseOrderController::class, 'stats']);
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
+    Route::get('purchase-orders/{id}/audit-trail', [PurchaseOrderController::class, 'getAuditTrail'])
+        ->middleware('can:view-audit-trail');
 
     // ── Contractor Bills ──────────────────────────────────────────
 
-    Route::get('/contractor-bills',               [ContractorBillController::class, 'index']);
-    Route::post('/contractor-bills',              [ContractorBillController::class, 'store']);
-    Route::post('/contractor-bills/{id}/upload-document', [ContractorBillController::class, 'uploadDocument']);
-    Route::delete('/contractor-bills/documents/{id}', [ContractorBillController::class, 'deleteDocument']);
-    Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify']);
-    Route::post('/contractor-bills/{id}/submit', [ContractorBillController::class, 'submit']);
-    Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve']);
-    Route::post('/contractor-bills/{id}/reject', [ContractorBillController::class, 'reject']);
-    Route::post('/contractor-bills/{id}/pay',     [ContractorBillController::class, 'pay']);
+    Route::get('/contractor-bills',               [ContractorBillController::class, 'index'])
+        ->middleware('can:submit-contractor-bill');
+    Route::post('/contractor-bills',              [ContractorBillController::class, 'store'])
+        ->middleware('can:submit-contractor-bill');
+    Route::post('/contractor-bills/{id}/upload-document', [ContractorBillController::class, 'uploadDocument'])
+        ->middleware('can:submit-contractor-bill');
+    Route::delete('/contractor-bills/documents/{id}', [ContractorBillController::class, 'deleteDocument'])
+        ->middleware('can:submit-contractor-bill');
+    Route::post('/contractor-bills/{id}/verify',  [ContractorBillController::class, 'verify'])
+        ->middleware('can:verify-contractor-bill');
+    Route::post('/contractor-bills/{id}/submit', [ContractorBillController::class, 'submit'])
+        ->middleware('can:submit-contractor-bill');
+    Route::post('/contractor-bills/{id}/approve', [ContractorBillController::class, 'approve'])
+        ->middleware('can:approve-contractor-payment');
+    Route::post('/contractor-bills/{id}/reject', [ContractorBillController::class, 'reject'])
+        ->middleware('can:approve-contractor-payment');
+    Route::post('/contractor-bills/{id}/pay',     [ContractorBillController::class, 'pay'])
+        ->middleware('can:mark-contractor-paid');
 
     // ── Quotations ────────────────────────────────────────────────
     Route::get('/jobs/{jobId}/quotations', [QuotationController::class, 'listByJob']);
-    Route::post('/quotations',              [QuotationController::class, 'store']);
-    Route::post('/quotations/{id}/select',  [QuotationController::class, 'select']);
+    Route::post('/quotations',              [QuotationController::class, 'store'])
+        ->middleware('can:enter-quotations');
+    Route::post('/quotations/{id}/select',  [QuotationController::class, 'select'])
+        ->middleware('can:select-contractor');
 
     // ── Invoices & Payments ───────────────────────────────────────
 

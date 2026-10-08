@@ -17,6 +17,14 @@ class AwardLetterPdfController extends Controller
             return response()->json(['message' => 'No contractor selected for this job yet'], 422);
         }
 
+        if (!$job->selectedContractor->contractor_code) {
+            return response()->json(['message' => 'Contractor code is missing for this contractor.'], 422);
+        }
+
+        if (!$job->tender || !$job->tender->tender_number) {
+            return response()->json(['message' => 'Tender number is missing for this job.'], 422);
+        }
+
         $pdf = Pdf::loadView('pdf.award-letter', compact('job'));
 
         return $pdf->download("Award-Letter-{$job->id}.pdf");

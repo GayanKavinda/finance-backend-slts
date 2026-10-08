@@ -34,6 +34,8 @@ class JobController extends Controller
 
     public function store(Request $request)
     {
+        // Note: selected_contractor_id is intentionally not accepted on Job creation/update.
+        // It is assigned exclusively through the quotation selection workflow (QuotationController::select).
         $validated = $request->validate([
             'tender_id'     => 'required|exists:tenders,id',
             'customer_id'   => 'required|exists:customers,id',

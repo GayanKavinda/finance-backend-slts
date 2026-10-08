@@ -12,14 +12,12 @@ class InvoiceSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create invoices for approved POs
+        // Create 1 invoice for each purchase order
         \App\Models\PurchaseOrder::all()->each(function ($po) {
-            if ($po->status === 'Approved') {
-                \App\Models\Invoice::factory(rand(1, 2))->create([
-                    'po_id' => $po->id,
-                    'customer_id' => $po->customer_id,
-                ]);
-            }
+            \App\Models\Invoice::factory()->create([
+                'po_id' => $po->id,
+                'customer_id' => $po->customer_id,
+            ]);
         });
     }
 }

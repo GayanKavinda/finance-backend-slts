@@ -9,6 +9,6 @@ class ContractorSeeder extends Seeder
 {
     public function run(): void
     {
-        Contractor::factory(10)->create();
+        Contractor::factory(5)->create();
     }
 }

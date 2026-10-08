@@ -98,12 +98,13 @@ class RolePermissionSeeder extends Seeder
             'view-audit-trail',
             'record-payment',
             'mark-banked',
+            'submit-contractor-bill', // Required to view Contractor Bills navigation
             'approve-contractor-payment',
             'mark-contractor-paid',
         ]);
 
         $viewer->syncPermissions([
-            'view-invoice'
+            'view-invoice',
         ]);
 
         $this->command->info('✅ Permissions and roles seeded successfully!');

@@ -62,6 +62,12 @@ php artisan serve
 
 The backend will be available at `http://localhost:8000`.
 
+### 6. Run the Queue Worker (Required for Background Emails & Jobs)
+
+```bash
+php artisan queue:work
+```
+
 ## 🌐 Frontend Integration
 
 This backend is designed to work seamlessly with the Next.js frontend.

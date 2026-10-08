@@ -11,9 +11,28 @@ class ContractorController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Contractor::latest()->get());
+        $query = Contractor::latest();
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('contractor_code', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%");
+            });
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // Allow callers to request all records (e.g., dropdowns) with ?all=1
+        if ($request->boolean('all')) {
+            return response()->json($query->get());
+        }
+
+        return response()->json($query->paginate(50));
     }
 
     /**
