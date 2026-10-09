@@ -84,6 +84,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::apiResource('contractors', ContractorController::class);
     Route::apiResource('tenders',     TenderController::class);
     Route::apiResource('jobs',        JobController::class);
+    Route::get('jobs/export', [JobController::class, 'export'])->middleware('can:manage-jobs');
     Route::get('purchase-orders/stats', [PurchaseOrderController::class, 'stats']);
     Route::apiResource('purchase-orders', PurchaseOrderController::class);
     Route::get('purchase-orders/{id}/audit-trail', [PurchaseOrderController::class, 'getAuditTrail'])

@@ -29,7 +29,7 @@ class PurchaseOrderPdfController extends Controller
                 'name' => 'Sri Lanka Telecom Services',
                 'division' => 'Finance Division',
                 'address' => 'Colombo, Sri Lanka',
-                'logo' => asset('icons/slt_digital_icon.png'),
+                'logo' => public_path('icons/slt_digital_icon.png'),
             ],
         ]);
 
