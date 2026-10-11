@@ -84,7 +84,24 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $email,
             'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'city' => $request->city,
+            'country' => $request->country,
+            'postal_code' => $request->postal_code,
+            'date_of_birth' => $request->date_of_birth,
+            'gender' => $request->gender,
+            'company' => $request->company,
+            'job_title' => $request->job_title,
+            'tax_id' => $request->tax_id,
         ]);
+
+        // Optional avatar upload during registration
+        if ($request->hasFile('avatar')) {
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar_path = $path;
+            $user->save();
+        }
 
         // Assign role if provided, otherwise default to "Viewer"
         if ($request->role) {

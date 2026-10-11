@@ -29,10 +29,21 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
-            $table->string('status')->default('Pending'); // Changed to string to allow flexibility, or enum if safe. Original was enum. Let's start with string or enum. Controller validation uses 'in:Pending,In Progress,Completed'. I will use string for safety against future changes or enum if preferred. Original used enum. I'll stick to string for better future-proofing or enum if DB supports it. Let's use string to match 'status' => 'required|string' in update validation, but 'in:...' in store. Enum is fine. I'll use string with default.
+            $table->foreignId('selected_contractor_id')
+                ->nullable()
+                ->constrained('contractors')
+                ->nullOnDelete();
+
+            $table->decimal('contractor_quote_amount', 15, 2)->nullable();
+            $table->date('contractor_quote_date')->nullable();
+            $table->date('work_start_date')->nullable();
+            $table->date('work_completion_date')->nullable();
+
+            $table->string('status')->default('Pending');
 
             $table->dateTime('completed_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

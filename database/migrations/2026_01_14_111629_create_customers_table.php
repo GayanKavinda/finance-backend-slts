@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('tax_number')->nullable();
             $table->string('contact_person')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

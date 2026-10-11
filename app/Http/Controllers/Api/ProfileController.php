@@ -69,8 +69,38 @@ class ProfileController extends Controller
         Log::info("[ProfileController] Updating profile for User ID: {$user->id}", ['new_name' => $request->name]);
         $data = $request->validate([
             'name' => 'required|string|min:2|max:255',
+            'phone' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:30',
+            'date_of_birth' => 'nullable|date|before_or_equal:today',
+            'gender' => 'nullable|in:Male,Female,Other',
+            'company' => 'nullable|string|max:255',
+            'job_title' => 'nullable|string|max:255',
+            'tax_id' => 'nullable|string|max:100',
         ]);
+
         $user->name = $data['name'];
+        foreach ([
+            'phone', 'address', 'city', 'country', 'postal_code',
+            'date_of_birth', 'gender', 'company', 'job_title', 'tax_id',
+        ] as $field) {
+            $user->{$field} = $request->input($field);
+        }
+
+        // Optional avatar upload via update-profile (multipart)
+        if ($request->hasFile('avatar')) {
+            $request->validate(['avatar' => 'image|mimes:jpeg,png,jpg,webp|max:2048']);
+            if ($user->avatar_path) {
+                try {
+                    Storage::disk('public')->delete($user->avatar_path);
+                } catch (\Throwable $e) { /* ignore */
+                }
+            }
+            $user->avatar_path = $request->file('avatar')->store('avatars', 'public');
+        }
+
         $this->audit($user, $request);
         $user->save();
         Log::info("[ProfileController] Profile updated successfully for User ID: {$user->id}");

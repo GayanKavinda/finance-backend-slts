@@ -2,22 +2,259 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\PurchaseOrder;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class InvoiceSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Create 1 invoice for each purchase order
-        \App\Models\PurchaseOrder::all()->each(function ($po) {
-            \App\Models\Invoice::factory()->create([
-                'po_id' => $po->id,
-                'customer_id' => $po->customer_id,
-            ]);
-        });
+        $admin = User::where('email', 'admin@finance.com')->first();
+        $superadmin = User::where('email', 'superadmin@finance.com')->first();
+        $finance = User::where('email', 'finance@finance.com')->first();
+
+        $invoices = [
+            [
+                'po_number'                => 'PO-2026-0001',
+                'customer_name'            => 'Dialog Axiata PLC',
+                'invoice_number'           => 'INV-2026-0001',
+                'invoice_amount'           => 3500000.00,
+                'invoice_date'             => '2026-03-01',
+                'billing_address'          => '475, Union Place, Colombo 02, Sri Lanka',
+                'customer_po_number'       => 'CUST-PO-DIA-9921',
+                'customer_po_description'  => 'Client PO for Western Province FTTH Phase 1 billing.',
+                'status'                   => 'Paid',
+                'payment_reference'        => 'PAY-DIA-SLT-20260310',
+                'payment_method'           => 'Bank Transfer',
+                'paid_at'                  => '2026-03-10 14:00:00',
+                'recorded_by'              => $finance?->id,
+                'payment_notes'            => 'Full settlement received via Dialog RTGS transfer.',
+                'cheque_number'            => null,
+                'bank_name'                => 'Bank of Ceylon',
+                'payment_amount'           => 3500000.00,
+                'payment_received_date'    => '2026-03-10',
+                'receipt_number'           => 'REC-2026-0001',
+                'is_banked'                => true,
+                'banked_at'                => '2026-03-11',
+                'bank_reference'           => 'SLT-BOC-CR-100234',
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-03-02 09:30:00',
+                'approved_by'              => $admin?->id,
+                'approved_at'              => '2026-03-03 11:20:00',
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0002',
+                'customer_name'            => 'Dialog Axiata PLC',
+                'invoice_number'           => 'INV-2026-0002',
+                'invoice_amount'           => 2600000.00,
+                'invoice_date'             => '2026-03-18',
+                'billing_address'          => '475, Union Place, Colombo 02, Sri Lanka',
+                'customer_po_number'       => 'CUST-PO-DIA-9945',
+                'customer_po_description'  => 'Client PO for OTDR testing milestone billing.',
+                'status'                   => 'Payment Received',
+                'payment_reference'        => 'CHQ-DIA-881203',
+                'payment_method'           => 'Cheque',
+                'paid_at'                  => '2026-03-25 15:30:00',
+                'recorded_by'              => $finance?->id,
+                'payment_notes'            => 'Cheque received from client finance desk. Deposited for clearing.',
+                'cheque_number'            => 'CHQ-881203',
+                'bank_name'                => 'Commercial Bank of Ceylon',
+                'payment_amount'           => 2600000.00,
+                'payment_received_date'    => '2026-03-25',
+                'receipt_number'           => 'REC-2026-0002',
+                'is_banked'                => false,
+                'banked_at'                => null,
+                'bank_reference'           => null,
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-03-19 10:15:00',
+                'approved_by'              => $admin?->id,
+                'approved_at'              => '2026-03-20 14:00:00',
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0003',
+                'customer_name'            => 'Lanka Electricity Company (LECO)',
+                'invoice_number'           => 'INV-2026-0003',
+                'invoice_amount'           => 8750000.00,
+                'invoice_date'             => '2026-02-25',
+                'billing_address'          => 'LECO House, 367, Dr. Colvin R. de Silva Mawatha, Colombo 02',
+                'customer_po_number'       => 'LECO-PROC-2026-44',
+                'customer_po_description'  => 'Smart metering tranche 1 invoice.',
+                'status'                   => 'Banked',
+                'payment_reference'        => 'CHQ-LECO-330192',
+                'payment_method'           => 'Cheque',
+                'paid_at'                  => '2026-03-05 11:00:00',
+                'recorded_by'              => $finance?->id,
+                'payment_notes'            => 'Cheque cleared and credited to SLT corporate account.',
+                'cheque_number'            => 'CHQ-330192',
+                'bank_name'                => 'Sampath Bank PLC',
+                'payment_amount'           => 8750000.00,
+                'payment_received_date'    => '2026-03-05',
+                'receipt_number'           => 'REC-2026-0003',
+                'is_banked'                => true,
+                'banked_at'                => '2026-03-08',
+                'bank_reference'           => 'SMP-SLT-CR-99042',
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-02-26 10:00:00',
+                'approved_by'              => $superadmin?->id,
+                'approved_at'              => '2026-02-28 16:30:00',
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0005',
+                'customer_name'            => 'Sri Lanka Telecom PLC',
+                'invoice_number'           => 'INV-2026-0004',
+                'invoice_amount'           => 13600000.00,
+                'invoice_date'             => '2026-02-10',
+                'billing_address'          => 'Lotus Road, Colombo 01, Sri Lanka',
+                'customer_po_number'       => 'SLT-INT-NP-0081',
+                'customer_po_description'  => 'Northern Province civil progress bill.',
+                'status'                   => 'Approved',
+                'payment_reference'        => null,
+                'payment_method'           => null,
+                'paid_at'                  => null,
+                'recorded_by'              => null,
+                'payment_notes'            => null,
+                'cheque_number'            => null,
+                'bank_name'                => null,
+                'payment_amount'           => null,
+                'payment_received_date'    => null,
+                'receipt_number'           => null,
+                'is_banked'                => false,
+                'banked_at'                => null,
+                'bank_reference'           => null,
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-02-12 11:00:00',
+                'approved_by'              => $superadmin?->id,
+                'approved_at'              => '2026-02-15 15:45:00',
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0007',
+                'customer_name'            => 'National Water Supply & Drainage Board',
+                'invoice_number'           => 'INV-2026-0005',
+                'invoice_amount'           => 4500000.00,
+                'invoice_date'             => '2026-03-20',
+                'billing_address'          => 'Galle Road, Ratmalana, Sri Lanka',
+                'customer_po_number'       => 'NWS-SCADA-0012',
+                'customer_po_description'  => 'Telemetry equipment delivery bill.',
+                'status'                   => 'Submitted',
+                'payment_reference'        => null,
+                'payment_method'           => null,
+                'paid_at'                  => null,
+                'recorded_by'              => null,
+                'payment_notes'            => null,
+                'cheque_number'            => null,
+                'bank_name'                => null,
+                'payment_amount'           => null,
+                'payment_received_date'    => null,
+                'receipt_number'           => null,
+                'is_banked'                => false,
+                'banked_at'                => null,
+                'bank_reference'           => null,
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-03-21 14:15:00',
+                'approved_by'              => null,
+                'approved_at'              => null,
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0009',
+                'customer_name'            => 'Sri Lanka Railways',
+                'invoice_number'           => 'INV-2026-0006',
+                'invoice_amount'           => 3800000.00,
+                'invoice_date'             => '2026-04-01',
+                'billing_address'          => 'Olcott Mawatha, Colombo 10, Sri Lanka',
+                'customer_po_number'       => 'SLR-SYS-2026-05',
+                'customer_po_description'  => 'CCTV initial hardware delivery invoice.',
+                'status'                   => 'Draft',
+                'payment_reference'        => null,
+                'payment_method'           => null,
+                'paid_at'                  => null,
+                'recorded_by'              => null,
+                'payment_notes'            => null,
+                'cheque_number'            => null,
+                'bank_name'                => null,
+                'payment_amount'           => null,
+                'payment_received_date'    => null,
+                'receipt_number'           => null,
+                'is_banked'                => false,
+                'banked_at'                => null,
+                'bank_reference'           => null,
+                'submitted_by'             => null,
+                'submitted_at'             => null,
+                'approved_by'              => null,
+                'approved_at'              => null,
+                'rejected_by'              => null,
+                'rejected_at'              => null,
+                'rejection_reason'         => null,
+            ],
+            [
+                'po_number'                => 'PO-2026-0010',
+                'customer_name'            => 'Dialog Axiata PLC',
+                'invoice_number'           => 'INV-2026-0007',
+                'invoice_amount'           => 1900000.00,
+                'invoice_date'             => '2026-03-28',
+                'billing_address'          => '475, Union Place, Colombo 02, Sri Lanka',
+                'customer_po_number'       => 'CUST-PO-DIA-9988',
+                'customer_po_description'  => 'Antenna swap preliminary mobilization.',
+                'status'                   => 'Rejected',
+                'payment_reference'        => null,
+                'payment_method'           => null,
+                'paid_at'                  => null,
+                'recorded_by'              => null,
+                'payment_notes'            => null,
+                'cheque_number'            => null,
+                'bank_name'                => null,
+                'payment_amount'           => null,
+                'payment_received_date'    => null,
+                'receipt_number'           => null,
+                'is_banked'                => false,
+                'banked_at'                => null,
+                'bank_reference'           => null,
+                'submitted_by'             => $finance?->id,
+                'submitted_at'             => '2026-03-29 10:00:00',
+                'approved_by'              => null,
+                'approved_at'              => null,
+                'rejected_by'              => $admin?->id,
+                'rejected_at'              => '2026-03-30 11:30:00',
+                'rejection_reason'         => 'Incorrect VAT calculation line item. Kindly revise and re-upload with correct tax schedule.',
+            ],
+        ];
+
+        $inserted = 0;
+        foreach ($invoices as $data) {
+            $po = PurchaseOrder::where('po_number', $data['po_number'])->first();
+            $customer = Customer::where('name', $data['customer_name'])->first();
+
+            if (!$po || !$customer) continue;
+
+            unset($data['po_number'], $data['customer_name']);
+
+            Invoice::updateOrCreate(
+                ['invoice_number' => $data['invoice_number']],
+                array_merge($data, [
+                    'po_id'       => $po->id,
+                    'customer_id' => $customer->id,
+                ])
+            );
+            $inserted++;
+        }
+
+        $this->command->info("✅ InvoiceSeeder: {$inserted} invoices seeded with complete payment/banking workflow details.");
     }
 }

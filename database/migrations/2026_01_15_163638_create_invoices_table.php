@@ -19,8 +19,22 @@ return new class extends Migration
             $table->decimal('invoice_amount', 15, 2);
             $table->date('invoice_date');
 
-            // Status with new values
-            $table->enum('status', ['Draft', 'Tax Generated', 'Submitted', 'Approved', 'Rejected', 'Paid'])->default('Draft');
+            // Billing address and customer PO info
+            $table->text('billing_address')->nullable();
+            $table->string('customer_po_number')->nullable();
+            $table->text('customer_po_description')->nullable();
+
+            // Status with all values
+            $table->enum('status', [
+                'Draft',
+                'Tax Generated',
+                'Submitted',
+                'Approved',
+                'Rejected',
+                'Payment Received',
+                'Banked',
+                'Paid'
+            ])->default('Draft');
 
             // Payment Metadata
             $table->string('payment_reference')->nullable();
