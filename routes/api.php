@@ -153,6 +153,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
     Route::delete('invoices/{id}/documents/{documentId}', [InvoiceController::class, 'deleteDocument']);
 
+    // Tax invoice generation (Draft → Tax Generated)
+    Route::post('tax-invoices', [TaxInvoiceController::class, 'store'])
+        ->middleware('can:create-invoice');
+
     // Standard Invoice CRUD
     Route::get('invoices', [InvoiceController::class, 'index'])
         ->middleware('can:view-invoice');

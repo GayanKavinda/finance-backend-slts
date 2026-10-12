@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ContractorSeeder::class,
             TenderSeeder::class,
             ProjectJobSeeder::class,
+            ContractorQuotationSeeder::class,
             PurchaseOrderSeeder::class,
             ContractorBillSeeder::class,
             InvoiceSeeder::class,

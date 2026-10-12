@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Contractor;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class ContractorSeeder extends Seeder
 {
@@ -136,6 +137,16 @@ class ContractorSeeder extends Seeder
             Contractor::updateOrCreate(['email' => $data['email']], $data);
         }
 
-        $this->command->info('✅ ContractorSeeder: ' . count($contractors) . ' contractors seeded with full details.');
+        // DatabaseSeeder runs with WithoutModelEvents, which suppresses the
+        // Contractor::booted() created hook that generates contractor_code.
+        // Backfill it here so award letters and code-based lookups work.
+        $backfilled = 0;
+        foreach (Contractor::whereNull('contractor_code')->get() as $contractor) {
+            $code = 'CON-' . str_pad($contractor->id, 6, '0', STR_PAD_LEFT);
+            DB::table('contractors')->where('id', $contractor->id)->update(['contractor_code' => $code]);
+            $backfilled++;
+        }
+
+        $this->command->info('✅ ContractorSeeder: ' . count($contractors) . ' contractors seeded with full details' . ($backfilled ? ", {$backfilled} contractor codes backfilled." : '.'));
     }
 }
