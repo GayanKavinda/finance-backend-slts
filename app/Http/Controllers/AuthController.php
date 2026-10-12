@@ -187,6 +187,24 @@ class AuthController extends Controller
 
             /** @var \App\Models\User $user */
             $user = Auth::user();
+
+            // Two-factor challenge: never complete the login without the code.
+            if ($user->two_factor_enabled) {
+                $challengeToken = \App\Http\Controllers\Api\TwoFactorController::startChallenge($user);
+
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+
+                Log::info("[AuthController] 2FA challenge issued for $email (ID: {$user->id})");
+
+                return response()->json([
+                    'message' => 'Two-factor authentication required. Enter the code sent to your email.',
+                    'two_factor_required' => true,
+                    'twofa_token' => $challengeToken,
+                    'email_hint' => $this->maskEmail($user->email),
+                ]);
+            }
+
             Log::info("[AuthController] Login successful for $email (ID: {$user->id})");
 
             $user->update([
@@ -224,8 +242,7 @@ class AuthController extends Controller
         ], 401);
     }
 
-    private function logActivity(User $user, Request $request, string $status = 'success'): void
-    {
+    private function logActivity(User $user, Request $request, string $status = 'success'): void    {
         $agent = $request->header('User-Agent') ?? '';
 
         // Precise Platform Detection
@@ -279,6 +296,19 @@ class AuthController extends Controller
             'status' => $status,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * Mask an email address for display on the 2FA screen (j***@domain.lk).
+     */
+    private function maskEmail(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email), 2, '');
+
+        $visible = substr($local, 0, 1);
+        $masked = $visible . str_repeat('*', max(strlen($local) - 1, 1));
+
+        return $masked . '@' . $domain;
     }
 
     /**

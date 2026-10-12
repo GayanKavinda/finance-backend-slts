@@ -19,6 +19,16 @@ return new class extends Migration
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });
+
+        // Per-user notification preferences (Settings → Notifications)
+        Schema::create('notification_preferences', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
+            $table->boolean('email_alerts')->default(true);
+            $table->boolean('browser_alerts')->default(true);
+            $table->boolean('critical_alerts')->default(true);
+            $table->timestamps();
+        });
     }
 
     /**
@@ -26,6 +36,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('notification_preferences');
         Schema::dropIfExists('notifications');
     }
 };

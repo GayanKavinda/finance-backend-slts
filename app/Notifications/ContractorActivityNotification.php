@@ -37,11 +37,23 @@ class ContractorActivityNotification extends Notification
     /**
      * Get the notification's delivery channels.
      *
+     * In-app (database) delivery is always on. Email delivery respects the
+     * recipient's notification preferences (Settings → Notifications).
+     *
      * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        $channels = ['database'];
+
+        if ($notifiable instanceof \App\Models\User) {
+            $prefs = $notifiable->notificationPreference ?: $notifiable->preferences();
+            if ($prefs->email_alerts) {
+                $channels[] = 'mail';
+            }
+        }
+
+        return $channels;
     }
 
     /**

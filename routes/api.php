@@ -23,6 +23,9 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\InternalReceiptPdfController;
 use App\Http\Controllers\Api\PurchaseOrderPdfController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\NotificationPreferenceController;
+use App\Http\Controllers\Api\TwoFactorController;
+use App\Http\Controllers\Api\SystemSettingsController;
 
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
     ->middleware('throttle:30,1');
@@ -44,7 +47,13 @@ Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp'])
 Route::post('/reset-password-otp', [PasswordResetController::class, 'resetPasswordWithOtp'])
     ->middleware('throttle:5,1');
 
-Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+// Two-factor authentication challenge endpoints (no session yet — this IS the login)
+Route::post('/verify-2fa', [TwoFactorController::class, 'verify'])
+    ->middleware('throttle:10,1');
+Route::post('/resend-2fa', [TwoFactorController::class, 'resend'])
+    ->middleware('throttle:3,1');
+
+Route::middleware(['auth:sanctum', 'throttle:120,1', 'maintenance'])->group(function () {
 
     // ── Auth ──────────────────────────────────────────────────────
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -70,6 +79,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
             'tax_id'      => $u->tax_id,
             'roles'       => $u->roles->pluck('name'),
             'permissions' => $u->getAllPermissions()->pluck('name'),
+            'two_factor_enabled' => (bool) $u->two_factor_enabled,
         ]);
     });
 
@@ -127,6 +137,18 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         ->middleware('can:enter-quotations');
     Route::post('/quotations/{id}/select',  [QuotationController::class, 'select'])
         ->middleware('can:select-contractor');
+
+    // ── Self-service settings: notifications & two-factor ─────────
+    Route::get('/notification-preferences',  [NotificationPreferenceController::class, 'show']);
+    Route::put('/notification-preferences',  [NotificationPreferenceController::class, 'update']);
+    Route::get('/2fa/status',                [TwoFactorController::class, 'status']);
+    Route::post('/2fa/enable',               [TwoFactorController::class, 'enable']);
+    Route::post('/2fa/disable',              [TwoFactorController::class, 'disable']);
+
+    // ── System settings (maintenance mode) ────────────────────────
+    Route::get('/system/maintenance-status', [SystemSettingsController::class, 'maintenanceStatus']);
+    Route::put('/system/maintenance-mode',   [SystemSettingsController::class, 'updateMaintenanceMode'])
+        ->middleware('can:manage-system');
 
     // ── Invoices & Payments ───────────────────────────────────────
 
@@ -194,6 +216,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     Route::get('/notifications',             [NotificationController::class, 'index']);
     Route::get('/notifications/unread',      [NotificationController::class, 'unread']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/read-all',   [NotificationController::class, 'markAllAsRead']);
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markAsRead']);
     Route::delete('/notifications/{id}',     [NotificationController::class, 'destroy']);

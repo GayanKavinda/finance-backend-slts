@@ -42,6 +42,7 @@ return new class extends Migration
             // Security & Lockout
             $table->integer('login_attempts')->default(0);
             $table->timestamp('lockout_until')->nullable();
+            $table->boolean('two_factor_enabled')->default(false);
 
             $table->rememberToken();
             $table->timestamps();
@@ -62,6 +63,15 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
+
+        // Singleton application settings (e.g. maintenance mode)
+        Schema::create('system_settings', function (Blueprint $table) {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->string('type')->default('string'); // string|boolean|integer|json
+            $table->timestamps();
+        });
     }
 
     /**
@@ -69,6 +79,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('system_settings');
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');

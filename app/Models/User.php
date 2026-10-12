@@ -41,6 +41,7 @@ class User extends Authenticatable
         'profile_updated_by',
         'login_attempts',
         'lockout_until',
+        'two_factor_enabled',
     ];
 
     /**
@@ -66,6 +67,7 @@ class User extends Authenticatable
             'date_of_birth' => 'date',
             'profile_updated_at' => 'datetime',
             'lockout_until' => 'datetime',
+            'two_factor_enabled' => 'boolean',
         ];
     }
 
@@ -95,5 +97,18 @@ class User extends Authenticatable
     public function loginActivities()
     {
         return $this->hasMany(LoginActivity::class);
+    }
+
+    public function notificationPreference()
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    /**
+     * Resolve the user's notification preferences, creating defaults on first use.
+     */
+    public function preferences(): NotificationPreference
+    {
+        return NotificationPreference::forUser($this->id);
     }
 }

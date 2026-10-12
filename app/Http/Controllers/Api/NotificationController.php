@@ -26,6 +26,16 @@ class NotificationController extends Controller
     }
 
     /**
+     * Lightweight unread count for navbar badge polling.
+     */
+    public function unreadCount(Request $request)
+    {
+        return response()->json([
+            'unread_count' => $request->user()->unreadNotifications()->count(),
+        ]);
+    }
+
+    /**
      * Mark a specific notification as read
      */
     public function markAsRead(Request $request, $id)
