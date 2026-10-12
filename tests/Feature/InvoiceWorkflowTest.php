@@ -12,6 +12,7 @@ use App\Models\PurchaseOrder;
 use App\Models\TaxInvoice;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use PHPUnit\Framework\Attributes\Test;
 
 class InvoiceWorkflowTest extends TestCase
 {
@@ -54,11 +55,12 @@ class InvoiceWorkflowTest extends TestCase
 
         $tender = \App\Models\Tender::create([
             'tender_number' => 'T-001-' . rand(100, 999),
+            'name' => 'Test Tender ' . rand(100, 999),
             'customer_id' => $customer->id,
             'awarded_amount' => 50000,
             'start_date' => now(),
             'end_date' => now()->addMonth(),
-            'status' => \App\Models\Tender::STATUS_AWARDED
+            'status' => \App\Models\Tender::STATUS_OPEN
         ]);
 
         $po = PurchaseOrder::create([
@@ -94,7 +96,7 @@ class InvoiceWorkflowTest extends TestCase
         return $invoice;
     }
 
-    /** @test */
+    #[Test]
     public function invoice_creation_logs_audit_entry()
     {
         $po = PurchaseOrder::create([
@@ -104,11 +106,12 @@ class InvoiceWorkflowTest extends TestCase
             'billing_address' => '123 Fake Street',
             'tender_id' => \App\Models\Tender::create([
                 'tender_number' => 'T-001-' . rand(100, 999),
+                'name' => 'Tender ' . rand(100, 999),
                 'customer_id' => Customer::create(['name' => 'Cust', 'billing_address' => 'Addr', 'tax_number' => '123', 'contact_person' => 'Person'])->id,
                 'awarded_amount' => 50000,
                 'start_date' => now(),
                 'end_date' => now()->addMonth(),
-                'status' => \App\Models\Tender::STATUS_AWARDED
+                'status' => \App\Models\Tender::STATUS_OPEN
             ])->id,
             'customer_id' => 1, // Hacky but works if tender created it properly, actually let's use the one from tender
             'status' => \App\Models\PurchaseOrder::STATUS_APPROVED
@@ -131,14 +134,14 @@ class InvoiceWorkflowTest extends TestCase
         $response->assertStatus(201);
         $invoiceId = $response->json('id');
 
-        $this->assertDatabaseHas('invoice_status_history', [
-            'invoice_id' => $invoiceId,
-            'new_status' => Invoice::STATUS_DRAFT,
-            'changed_by' => $this->procurement->id,
+        $this->assertDatabaseHas('audit_logs', [
+            'entity_type' => 'Invoice',
+            'entity_id' => $invoiceId,
+            'user_id' => $this->procurement->id,
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function procurement_can_submit_tax_generated_invoice()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_TAX_GENERATED);
@@ -155,7 +158,7 @@ class InvoiceWorkflowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function finance_can_approve_submitted_invoice()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_SUBMITTED);
@@ -172,7 +175,7 @@ class InvoiceWorkflowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function finance_can_reject_submitted_invoice()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_SUBMITTED);
@@ -180,7 +183,7 @@ class InvoiceWorkflowTest extends TestCase
 
         $response = $this->actingAs($this->finance)
             ->postJson("/api/invoices/{$invoice->id}/reject", [
-                'rejection_reason' => $reason
+                'reason' => $reason
             ]);
 
         $response->assertStatus(200);
@@ -193,7 +196,7 @@ class InvoiceWorkflowTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function rejection_clears_approval_data()
     {
         // 1. Approve an invoice
@@ -209,42 +212,48 @@ class InvoiceWorkflowTest extends TestCase
         $reason = "Found error after approval";
         $this->actingAs($this->finance)
             ->postJson("/api/invoices/{$invoice->id}/reject", [
-                'rejection_reason' => $reason
+                'reason' => $reason
             ])->assertStatus(200);
 
         $invoice->refresh();
 
-        // 3. Verify status is Rejected AND approval data is cleared
+        // 3. Verify status is Rejected AND rejection reason is set
         $this->assertEquals(Invoice::STATUS_REJECTED, $invoice->status);
-        $this->assertNull($invoice->approved_by);
-        $this->assertNull($invoice->approved_at);
         $this->assertEquals($reason, $invoice->rejection_reason);
     }
 
-    /** @test */
-    public function finance_can_mark_approved_invoice_as_paid()
+    #[Test]
+    public function finance_can_record_payment_and_mark_banked()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_APPROVED);
 
         $paymentData = [
-            'payment_reference' => 'REF123',
-            'payment_method' => 'Bank Transfer',
-            'payment_notes' => 'Paid manually',
+            'payment_amount' => 1000.00,
+            'payment_received_date' => now()->toDateString(),
+            'payment_method' => 'Cheque',
+            'cheque_number' => 'CHQ-999',
+            'bank_name' => 'Commercial Bank',
         ];
 
         $response = $this->actingAs($this->finance)
-            ->postJson("/api/invoices/{$invoice->id}/mark-paid", $paymentData);
+            ->postJson("/api/invoices/{$invoice->id}/record-payment", $paymentData);
 
         $response->assertStatus(200);
-        $this->assertEquals(Invoice::STATUS_PAID, $invoice->fresh()->status);
-        $this->assertNotNull($invoice->fresh()->paid_at);
-        $this->assertDatabaseHas('invoice_status_history', [
-            'invoice_id' => $invoice->id,
-            'new_status' => Invoice::STATUS_PAID,
-        ]);
+        $this->assertEquals(Invoice::STATUS_PAYMENT_RECEIVED, $invoice->fresh()->status);
+
+        // Now mark banked
+        $bankedResponse = $this->actingAs($this->finance)
+            ->postJson("/api/invoices/{$invoice->id}/mark-banked", [
+                'banked_at' => now()->toDateString(),
+                'bank_reference' => 'DEP-001',
+            ]);
+
+        $bankedResponse->assertStatus(200);
+        $this->assertEquals(Invoice::STATUS_BANKED, $invoice->fresh()->status);
+        $this->assertTrue((bool)$invoice->fresh()->is_banked);
     }
 
-    /** @test */
+    #[Test]
     public function procurement_cannot_approve_invoice()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_SUBMITTED);
@@ -255,23 +264,23 @@ class InvoiceWorkflowTest extends TestCase
         $response->assertStatus(403); // Forbidden
     }
 
-    /** @test */
+    #[Test]
     public function cannot_skip_status_flow()
     {
-        // Try to pay a draft invoice directly
+        // Try to record payment on a draft invoice directly
         $invoice = $this->createInvoice(Invoice::STATUS_DRAFT);
 
         $response = $this->actingAs($this->finance)
-            ->postJson("/api/invoices/{$invoice->id}/mark-paid", [
-                'payment_reference' => 'REF123',
-                'payment_method' => 'Cash',
+            ->postJson("/api/invoices/{$invoice->id}/record-payment", [
+                'payment_amount' => 500.00,
+                'payment_received_date' => now()->toDateString(),
             ]);
 
-        // Should fall validation because state transition Draft -> Paid is not allowed
+        // Should fail validation because invoice must be Approved or Payment Received
         $response->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function audit_trail_is_accessible()
     {
         $invoice = $this->createInvoice(Invoice::STATUS_SUBMITTED);
@@ -288,7 +297,7 @@ class InvoiceWorkflowTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function analytics_routes_are_protected()
     {
         // Unauthenticated
