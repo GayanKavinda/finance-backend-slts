@@ -32,7 +32,10 @@ return [
         explode(',', env('CORS_ALLOWED_ORIGINS', ''))
     ))),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://.*\.trycloudflare\.com$#',
+        '#^https://.*\.ngrok-free\.app$#',
+    ],
 
     'allowed_headers' => ['*'],
 
