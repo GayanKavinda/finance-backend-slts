@@ -26,7 +26,7 @@ class InvoiceSeeder extends Seeder
                 'billing_address'          => '475, Union Place, Colombo 02, Sri Lanka',
                 'customer_po_number'       => 'CUST-PO-DIA-9921',
                 'customer_po_description'  => 'Client PO for Western Province FTTH Phase 1 billing.',
-                'status'                   => 'Paid',
+                'status'                   => 'Banked',
                 'payment_reference'        => 'PAY-DIA-SLT-20260310',
                 'payment_method'           => 'Bank Transfer',
                 'paid_at'                  => '2026-03-10 14:00:00',

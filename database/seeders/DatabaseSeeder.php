@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             InvoiceSeeder::class,
             ChequeTransactionSeeder::class,
             SystemTelemetryAndLogSeeder::class,
+            SupportTicketSeeder::class,
         ]);
     }
 }

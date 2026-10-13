@@ -104,6 +104,11 @@ class User extends Authenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
+    public function supportTickets()
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
     /**
      * Resolve the user's notification preferences, creating defaults on first use.
      */

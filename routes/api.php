@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\NotificationPreferenceController;
 use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\SystemSettingsController;
+use App\Http\Controllers\Api\SupportTicketController;
 
 Route::post('/check-email-exists', [AuthController::class, 'checkEmailExists'])
     ->middleware('throttle:30,1');
@@ -144,6 +145,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1', 'maintenance'])->group(func
     Route::get('/2fa/status',                [TwoFactorController::class, 'status']);
     Route::post('/2fa/enable',               [TwoFactorController::class, 'enable']);
     Route::post('/2fa/disable',              [TwoFactorController::class, 'disable']);
+
+    // ── Help Center: support tickets ──────────────────────────────
+    Route::get('/support-tickets',  [SupportTicketController::class, 'index']);
+    Route::post('/support-tickets', [SupportTicketController::class, 'store']);
 
     // ── System settings (maintenance mode) ────────────────────────
     Route::get('/system/maintenance-status', [SystemSettingsController::class, 'maintenanceStatus']);
