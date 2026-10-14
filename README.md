@@ -33,14 +33,15 @@
 
 | Domain | Highlights |
 | :--- | :--- |
-| 🔐 **Auth & security** | Sanctum SPA auth (HttpOnly cookies + CSRF), OTP password reset, login history, active-session listing & revocation, configurable rate limits, account deactivation & permanent deletion |
+| 🔐 **Auth & security** | Sanctum SPA auth (HttpOnly cookies + CSRF), OTP password reset, two-factor login challenge, login history, active-session listing & revocation, configurable rate limits, account deactivation & permanent deletion |
 | 👤 **Profile** | Avatar upload, profile & password update, secure email change with confirmation |
 | 🏗️ **Procurement** | Customers, contractors, tenders, jobs, purchase orders — full CRUD with status history and audit trails |
 | 👷 **Contractor billing** | Bill submission → verification → submission → approval/rejection → disbursement, document uploads, quotations & contractor selection, partial payments & retention |
 | 🧾 **Invoicing & finance** | Invoice lifecycle, payment records, milestone/retention tracking, cheque transaction registry, executive summary analytics |
 | 📄 **Documents & PDF** | Invoice PDF, internal receipt, PO PDF, job award letter, tender award letters (domPDF) |
-| 🛡️ **Administration** | User directory, role & permission designer, audit logs, system metrics & logs (Super Admin) |
+| 🛡️ **Administration** | User directory, role & permission designer, audit logs, system metrics & logs, maintenance mode (Super Admin) |
 | 🔔 **Notifications** | In-app notification feed with unread count and read-state management |
+| 🎫 **Support tickets** | Help Center self-service tickets with `TKT-YYYY-####` numbering, per-user visibility and status tracking |
 
 ## 🧱 Tech Stack
 
@@ -113,6 +114,8 @@ Key environment variables:
 php artisan migrate --seed
 php artisan storage:link   # expose uploaded avatars/documents
 ```
+
+> The seed loads the full demo dataset — 5 role accounts, 8 customers, 8 contractors, 10 tenders, 10 jobs with 3 competitive bids each, 10 purchase orders, 8 contractor bills, 7 invoices with payment history, plus notifications, audit logs and 7 support tickets. To rebuild from scratch: `php artisan migrate:fresh --seed --force` (this signs everyone out — sessions are database-backed).
 
 ### 4. Serve
 
@@ -240,13 +243,15 @@ Base URL: `http://localhost:8000/api` · Auth: session cookie from `/sanctum/csr
 | `/jobs/{id}/award-letter` | `GET` | Job award letter |
 | `/tenders/{id}/award-customer` | `GET` | Tender award letter |
 
-### Notifications & Administration
+### Notifications, Support & Administration
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/notifications` · `/notifications/unread` | `GET` | Feed / unread count |
 | `/notifications/{id}/read` · `/read-all` | `POST` | Mark as read |
 | `/notifications/{id}` | `DELETE` | Delete notification |
+| `/notifications/unread-count` | `GET` | Badge-only unread total (polled every 30s) |
+| `/support-tickets` | `GET` / `POST` | Your help tickets / submit a ticket (auto `TKT-YYYY-####`) |
 | `/admin/users` · `/admin/users/{id}` | `GET` | User directory |
 | `/admin/users/{id}/assign-role` | `POST` | Assign role |
 | `/admin/users/{id}/deactivate` · `/reactivate` | `DELETE`/`POST` | Account state |
@@ -255,6 +260,7 @@ Base URL: `http://localhost:8000/api` · Auth: session cookie from `/sanctum/csr
 | `/admin/permissions` | `GET`/`POST`/`DELETE` | Permission registry |
 | `/admin/audit-logs` · `/admin/audit-logs/meta` | `GET` | Audit trail + filters |
 | `/system/metrics` · `/system/logs` | `GET` | System telemetry (Super Admin) |
+| `/system/maintenance-mode` | `PUT` | Toggle maintenance mode — 503-gates writes (Super Admin) |
 
 ### ⏱️ Rate Limiting
 
@@ -297,12 +303,15 @@ erDiagram
     USERS ||--o{ INVOICES : "records / approves"
 ```
 
-Core tables: `users`, `customers`, `contractors`, `tenders`, `project_jobs`, `purchase_orders` (+ status history), `contractor_bills` (+ documents, payments), `contractor_quotations`, `invoices` (+ status history, documents, payments, tax invoices, cheque transactions), `audit_logs`, `login_activities`, `notifications`, plus spatie `roles`/`permissions` pivot tables.
+Core tables: `users`, `customers`, `contractors`, `tenders`, `project_jobs`, `purchase_orders` (+ status history), `contractor_bills` (+ documents, payments), `contractor_quotations`, `invoices` (+ status history, documents, payments, tax invoices, cheque transactions), `audit_logs`, `login_activities`, `notifications`, `notification_preferences`, `support_tickets`, `system_settings`, plus spatie `roles`/`permissions` pivot tables.
+
+The schema uses **one `create_*` migration per table with no alter migrations** — `php artisan migrate:fresh --seed` is always a full, reproducible rebuild. Cascade rules run from parent to child (deleting a customer removes its tenders/jobs/POs/invoices; deleting an invoice removes its payments, cheques, tax invoice, documents and history), while workflow actor columns (`recorded_by`, `approved_by`, …) null on user deletion so financial history survives.
 
 ## 🧪 Testing
 
 ```bash
-php artisan test
+php artisan test                  # full suite (in-memory SQLite)
+php artisan test --filter=ProcurementFlowTest   # single area
 ```
 
 | Suite | Coverage |
@@ -313,6 +322,9 @@ php artisan test
 | `ProcurementFlowTest` | Tenders, jobs, quotations, contractor selection, POs |
 | `PdfGenerationTest` | Invoice/receipt/PO/award-letter PDFs |
 | `UserManagementTest` | User directory, role assignment, deactivation |
+| `SupportTicketTest` | Ticket submission, numbering, validation, per-user visibility |
+
+**61 tests / 232 assertions.** Feature tests use the `RefreshDatabase` trait against in-memory SQLite and drive real HTTP routes with `actingAs()`, so permission gates and workflow state machines are genuinely exercised. The frontend adds browser coverage in `../finance-frontend/src/tests` (QA, RBAC, responsive, a11y, profile relocation, settings media) — **89 passing**.
 
 ## 🐳 Docker
 

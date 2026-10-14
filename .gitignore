@@ -1,15 +1,26 @@
 *.log
 .DS_Store
+Thumbs.db
 .env
-
-# Debug / scratch files — never commit these
-test_*.php
-test_*.txt
-list_users.php
-read_log.php
-routes_check.txt
 .env.backup
 .env.production
+
+# Debug / scratch files — never commit these
+/test_*.php
+/test_*.txt
+/verify_*.php
+/audit_*.php
+/list_users.php
+/read_log.php
+/routes_check.txt
+/ts.php
+/la.php
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# PHP tooling caches
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -19,6 +30,8 @@ routes_check.txt
 /.vscode
 /.zed
 /auth.json
+
+# dependencies & build output
 /node_modules
 /public/build
 /public/hot
@@ -26,6 +39,7 @@ routes_check.txt
 /storage/*.key
 /storage/pail
 /vendor
-Homestead.json
-Homestead.yaml
-Thumbs.db
+/bootstrap/cache/*.php
+
+# OS noise
+desktop.ini
