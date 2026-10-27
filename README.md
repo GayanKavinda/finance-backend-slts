@@ -219,14 +219,14 @@ Base URL: `http://localhost:8000/api` · Auth: session cookie from `/sanctum/csr
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/invoices` | `GET`/`POST`/`PUT` | Invoice CRUD |
-| `/invoices/{id}` | `GET` | Invoice detail |
-| `/invoices/{id}/record-payment` | `POST` | Record payment / cheque |
-| `/invoices/{id}/mark-banked` | `POST` | Mark payment as banked |
-| `/invoices/{id}/submit-to-finance` | `POST` | Workflow transition |
-| `/invoices/{id}/approve` · `/reject` | `POST` | Finance decision |
-| `/invoices/{id}/upload-document` · `DELETE .../documents/{documentId}` | `POST`/`DELETE` | Invoice documents |
-| `/invoices/{id}/audit-trail` | `GET` | Status history |
+| `/invoices` | `GET`/`POST`/`PUT` | Invoice CRUD (`view-invoice`, `create-invoice`, `edit-invoice`) |
+| `/invoices/{id}` | `GET` | Invoice detail (`view-invoice`) |
+| `/invoices/{id}/record-payment` | `POST` | Record payment / cheque (`record-payment`) |
+| `/invoices/{id}/mark-banked` | `POST` | Mark payment as banked (`mark-banked`) |
+| `/invoices/{id}/submit-to-finance` | `POST` | Workflow transition (`submit-invoice`) |
+| `/invoices/{id}/approve` · `/reject` | `POST` | Finance decision (`approve-payment` / `reject-invoice`) |
+| `/invoices/{id}/upload-document` · `DELETE .../documents/{documentId}` | `POST`/`DELETE` | Invoice documents (`edit-invoice`) |
+| `/invoices/{id}/audit-trail` | `GET` | Status history (`view-audit-trail`) |
 | `/executive-summary` · `/invoice-summary` · `/invoices/summary` | `GET` | Dashboard KPIs (aliases) |
 | `/invoices/status-breakdown` | `GET` | Status distribution |
 | `/invoices/monthly-trend` | `GET` | Monthly revenue trend |
@@ -306,6 +306,20 @@ erDiagram
 Core tables: `users`, `customers`, `contractors`, `tenders`, `project_jobs`, `purchase_orders` (+ status history), `contractor_bills` (+ documents, payments), `contractor_quotations`, `invoices` (+ status history, documents, payments, tax invoices, cheque transactions), `audit_logs`, `login_activities`, `notifications`, `notification_preferences`, `support_tickets`, `system_settings`, plus spatie `roles`/`permissions` pivot tables.
 
 The schema uses **one `create_*` migration per table with no alter migrations** — `php artisan migrate:fresh --seed` is always a full, reproducible rebuild. Cascade rules run from parent to child (deleting a customer removes its tenders/jobs/POs/invoices; deleting an invoice removes its payments, cheques, tax invoice, documents and history), while workflow actor columns (`recorded_by`, `approved_by`, …) null on user deletion so financial history survives.
+
+### 🔒 Security & Data Protection Architecture
+
+The database architecture is safely documented and exposed as an ERD because defenses are enforced at both the ORM and authorization layers:
+
+1. **SQL Injection (SQLi) Immune**:
+   - Every query is handled via Eloquent ORM and prepared PDO statements.
+   - All dynamic calculations (`sum(DB::raw(...))`, date grouping) use strictly hardcoded, sanitised expressions without user input interpolation.
+2. **Strict Mass Assignment Protection**:
+   - Every model defines a whitelist `$fillable` array; no `$guarded = []` wildcards are permitted.
+   - All mutating controllers use `$request->validate()` and pass only validated keys to creation/update routines. Sensitive attributes (like roles, permissions, account flags) are isolated to dedicated administrative controllers.
+3. **Defense-in-Depth Against IDOR (Insecure Direct Object Reference)**:
+   - User-scoped resources (login history, sessions, support tickets, notifications) strictly query through the authenticated user relationship (`$request->user()->...`).
+   - Every state transition route (`record-payment`, `mark-banked`, `approve`, `reject`, `upload-document`, `submit-to-finance`) is guarded by explicit Spatie permission middleware (`can:record-payment`, `can:mark-banked`, `can:approve-payment`, etc.). Even if an attacker knows internal record IDs or table column names, unauthorized access is rejected with a `403 Forbidden`.
 
 ## 🧪 Testing
 

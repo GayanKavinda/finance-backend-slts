@@ -175,10 +175,14 @@ Route::middleware(['auth:sanctum', 'throttle:120,1', 'maintenance'])->group(func
         ->middleware('can:view-invoice');
 
     // Payment actions
-    Route::post('invoices/{id}/record-payment', [InvoiceController::class, 'recordPayment']);
-    Route::post('invoices/{id}/mark-banked', [InvoiceController::class, 'markAsBanked']);
-    Route::post('invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument']);
-    Route::delete('invoices/{id}/documents/{documentId}', [InvoiceController::class, 'deleteDocument']);
+    Route::post('invoices/{id}/record-payment', [InvoiceController::class, 'recordPayment'])
+        ->middleware('can:record-payment');
+    Route::post('invoices/{id}/mark-banked', [InvoiceController::class, 'markAsBanked'])
+        ->middleware('can:mark-banked');
+    Route::post('invoices/{id}/upload-document', [InvoiceController::class, 'uploadDocument'])
+        ->middleware('can:edit-invoice');
+    Route::delete('invoices/{id}/documents/{documentId}', [InvoiceController::class, 'deleteDocument'])
+        ->middleware('can:edit-invoice');
 
     // Tax invoice generation (Draft → Tax Generated)
     Route::post('tax-invoices', [TaxInvoiceController::class, 'store'])
